@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/table';
 import { useCan } from '@/hooks/use-can';
 import { date, money, num, percent, signClass } from '@/lib/format';
+import { dayLabel } from '@/lib/route-tools';
 import clients from '@/routes/clients';
 import collections from '@/routes/collections';
 import loans from '@/routes/loans';
@@ -106,10 +107,14 @@ export default function ClientShow({
                 }
             />
 
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-5">
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-6">
                 <Info
                     label="Estado"
                     value={<ActiveBadge active={client.is_active} />}
+                />
+                <Info
+                    label="Día de visita"
+                    value={dayLabel(client.visit_day)}
                 />
                 <Info label="Documento" value={client.document ?? '—'} />
                 <Info label="Teléfono" value={client.phone ?? '—'} />
@@ -133,7 +138,7 @@ export default function ClientShow({
                     <Info
                         label="Dirección"
                         value={client.address}
-                        className="sm:col-span-2 md:col-span-5"
+                        className="sm:col-span-2 md:col-span-6"
                     />
                 )}
             </div>

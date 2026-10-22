@@ -2,8 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Enums\RoleScope;
 use App\Models\Client;
+use App\Models\Role;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Concerns\BuildsOperation;
 use Tests\TestCase;
 
@@ -156,6 +160,85 @@ class ClientManagementTest extends TestCase
             ->assertRedirect(route('clients.index'));
 
         $this->assertModelMissing($client);
+    }
+
+    public function test_client_stores_visit_day_and_coordinates(): void
+    {
+        $this->actingAs($this->admin)
+            ->post(route('clients.store'), $this->payload(['visit_day' => 3, 'latitude' => '14.6349150', 'longitude' => '-90.5068824']))
+            ->assertSessionHasNoErrors();
+
+        $client = Client::where('name', 'Tienda Nueva')->firstOrFail();
+        $this->assertSame(3, $client->visit_day);
+        $this->assertSame('14.6349150', $client->latitude);
+        $this->assertSame('-90.5068824', $client->longitude);
+
+        $this->actingAs($this->admin)
+            ->post(route('clients.store'), $this->payload(['name' => 'Día inválido', 'visit_day' => 8, 'latitude' => 14.6]))
+            ->assertSessionHasErrors(['visit_day', 'longitude']);
+    }
+
+    public function test_route_view_shows_cycle_status_and_receipt_of_the_week(): void
+    {
+        $this->actingAs($this->collector)->get(route('clients.index'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('clients/index')
+                ->has('clients.data', 1)
+                ->where('clients.data.0.installed_machines_count', fn ($n) => (int) $n === 1)
+                ->where('clients.data.0.collected_machines_count', fn ($n) => (int) $n === 1)
+                ->where('clients.data.0.week_collection_id', fn ($id) => (int) $id === $this->collection->id)
+                ->has('clients.data.0.machines', 1)
+                ->where('today', now()->dayOfWeekIso));
+
+        // Una máquina nueva sin cobrar deja el corte de la semana como parcial.
+        $this->installMachine($this->client, 'MAQ-3', 100);
+
+        $this->actingAs($this->collector)->get(route('clients.index'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('clients.data.0.installed_machines_count', fn ($n) => (int) $n === 2)
+                ->where('clients.data.0.collected_machines_count', fn ($n) => (int) $n === 1));
+    }
+
+    public function test_route_view_filters_by_visit_day(): void
+    {
+        $this->client->update(['visit_day' => 2]);
+
+        $this->actingAs($this->admin)->get(route('clients.index', ['day' => 2]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('clients.data', 1)
+                ->where('clients.data.0.id', $this->client->id)
+                ->where('filters.day', '2'));
+
+        $this->actingAs($this->admin)->get(route('clients.index', ['day' => 3]))
+            ->assertInertia(fn (Assert $page) => $page->has('clients.data', 0));
+    }
+
+    public function test_collector_updates_location_of_own_clients_only(): void
+    {
+        $this->actingAs($this->collector)
+            ->post(route('clients.location', $this->client), ['latitude' => 14.6349, 'longitude' => -90.5069])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $client = $this->client->fresh();
+        $this->assertSame('14.6349000', $client?->latitude);
+        $this->assertSame('-90.5069000', $client?->longitude);
+
+        $this->actingAs($this->collector)
+            ->post(route('clients.location', $this->client), ['latitude' => 200, 'longitude' => -90.5])
+            ->assertSessionHasErrors('latitude');
+
+        $this->actingAs($this->collector)
+            ->post(route('clients.location', $this->otherClient), ['latitude' => 14.6, 'longitude' => -90.5])
+            ->assertNotFound();
+
+        $readOnly = User::factory()->create([
+            'role_id' => Role::create(['name' => 'Consulta', 'scope' => RoleScope::All, 'permissions' => ['clients.view']])->id,
+        ]);
+
+        $this->actingAs($readOnly)
+            ->post(route('clients.location', $this->client), ['latitude' => 14.6, 'longitude' => -90.5])
+            ->assertForbidden();
     }
 
     public function test_collector_can_view_own_clients_but_not_create(): void

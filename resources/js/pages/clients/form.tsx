@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
+import { WEEK_DAYS } from '@/lib/route-tools';
 import clients from '@/routes/clients';
 import type { Client, IdName } from '@/types';
 
@@ -126,6 +127,59 @@ export default function ClientForm({
                                         type="number"
                                         min={0}
                                         defaultValue={client?.visit_order ?? 0}
+                                    />
+                                </Field>
+                                <Field
+                                    label="Día de visita"
+                                    htmlFor="visit_day"
+                                    error={errors.visit_day}
+                                    hint="Día de la semana en que toca el corte."
+                                >
+                                    <NativeSelect
+                                        id="visit_day"
+                                        name="visit_day"
+                                        defaultValue={client?.visit_day ?? ''}
+                                    >
+                                        <option value="">Sin día fijo</option>
+                                        {WEEK_DAYS.map((d) => (
+                                            <option
+                                                key={d.value}
+                                                value={d.value}
+                                            >
+                                                {d.label}
+                                            </option>
+                                        ))}
+                                    </NativeSelect>
+                                </Field>
+                                <Field
+                                    label="Latitud"
+                                    htmlFor="latitude"
+                                    error={errors.latitude}
+                                    hint="Opcional. También se puede tomar en campo desde la tarjeta del cliente."
+                                >
+                                    <Input
+                                        id="latitude"
+                                        name="latitude"
+                                        type="number"
+                                        step="0.0000001"
+                                        min={-90}
+                                        max={90}
+                                        defaultValue={client?.latitude ?? ''}
+                                    />
+                                </Field>
+                                <Field
+                                    label="Longitud"
+                                    htmlFor="longitude"
+                                    error={errors.longitude}
+                                >
+                                    <Input
+                                        id="longitude"
+                                        name="longitude"
+                                        type="number"
+                                        step="0.0000001"
+                                        min={-180}
+                                        max={180}
+                                        defaultValue={client?.longitude ?? ''}
                                     />
                                 </Field>
                                 <Field

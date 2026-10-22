@@ -22,10 +22,13 @@ use Illuminate\Support\Carbon;
  * @property string $amount_out
  * @property string $net
  * @property bool $forced
+ * @property string|null $cash_counted Efectivo físico contado en la máquina.
+ * @property string|null $notes
+ * @property string|null $photo_path
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['collection_id', 'machine_id', 'previous_in', 'current_in', 'previous_out', 'current_out', 'credit_value', 'amount_in', 'amount_out', 'net', 'forced'])]
+#[Fillable(['collection_id', 'machine_id', 'previous_in', 'current_in', 'previous_out', 'current_out', 'credit_value', 'amount_in', 'amount_out', 'net', 'forced', 'cash_counted', 'notes', 'photo_path'])]
 class CollectionItem extends Model
 {
     /**
@@ -59,6 +62,7 @@ class CollectionItem extends Model
             'amount_out' => 'decimal:2',
             'net' => 'decimal:2',
             'forced' => 'boolean',
+            'cash_counted' => 'decimal:2',
         ];
     }
 }

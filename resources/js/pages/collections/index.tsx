@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { Plus } from 'lucide-react';
+import { Plus, Receipt } from 'lucide-react';
 import { EmptyRow } from '@/components/app/empty-row';
 import { FilterBar, FilterField } from '@/components/app/filter-bar';
 import { Page, PageHeader, Panel } from '@/components/app/page';
@@ -45,7 +45,7 @@ export default function CollectionsIndex({
             <Head title="Cortes" />
             <PageHeader
                 title="Cortes"
-                description="Visitas de cobro: lectura de contadores y liquidación con el cliente."
+                description="Visitas de cobro: lectura de contadores y liquidación con el cliente. Filtre por fecha para reimprimir cualquier recibo."
                 actions={
                     can('collections.create') && (
                         <Button asChild>
@@ -137,11 +137,12 @@ export default function CollectionsIndex({
                             <TableHead className="text-right">
                                 Efectivo
                             </TableHead>
+                            <TableHead className="text-right">Recibo</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {page.data.length === 0 && (
-                            <EmptyRow colSpan={10}>
+                            <EmptyRow colSpan={11}>
                                 No hay cortes en el período.
                             </EmptyRow>
                         )}
@@ -179,6 +180,16 @@ export default function CollectionsIndex({
                                 </TableCell>
                                 <TableCell className="text-right font-medium tabular-nums">
                                     {money(c.cash_delivered)}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    <Button variant="ghost" size="icon" asChild>
+                                        <Link
+                                            href={collections.receipt(c.id)}
+                                            aria-label={`Recibo del corte #${c.id}`}
+                                        >
+                                            <Receipt />
+                                        </Link>
+                                    </Button>
                                 </TableCell>
                             </TableRow>
                         ))}

@@ -1,43 +1,68 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
-import { ActiveBadge } from '@/components/app/badges';
-import { EmptyRow } from '@/components/app/empty-row';
+import { Pill } from '@/components/app/badges';
 import { FilterBar, FilterField } from '@/components/app/filter-bar';
 import { Page, PageHeader, Panel } from '@/components/app/page';
 import { Pagination } from '@/components/app/pagination';
+import {
+    CYCLE_STATUS,
+    RouteClientCard,
+} from '@/components/app/route-client-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import { useCan } from '@/hooks/use-can';
-import { money, percent } from '@/lib/format';
+import { date } from '@/lib/format';
+import { WEEK_DAYS } from '@/lib/route-tools';
+import { cn } from '@/lib/utils';
 import clients from '@/routes/clients';
 import type { Client, IdName, Paginated } from '@/types';
+
+type Filters = { search?: string; route_id?: string; day?: string };
 
 export default function ClientsIndex({
     clients: page,
     filters,
     routes,
+    today,
+    week,
 }: {
     clients: Paginated<Client>;
-    filters: { search?: string; route_id?: string };
+    filters: Filters;
     routes: IdName[];
+    today: number;
+    week: { from: string; to: string };
 }) {
     const can = useCan();
+    const selectedDay = filters.day ? Number(filters.day) : null;
+
+    const selectDay = (day: number | null) => {
+        const query: Record<string, string> = {};
+
+        if (filters.search) {
+            query.search = filters.search;
+        }
+
+        if (filters.route_id) {
+            query.route_id = filters.route_id;
+        }
+
+        if (day !== null) {
+            query.day = String(day);
+        }
+
+        router.get(clients.index().url, query, {
+            preserveState: true,
+            replace: true,
+        });
+    };
 
     return (
         <Page>
             <Head title="Clientes" />
             <PageHeader
                 title="Clientes"
-                description="Locales donde se instalan las máquinas. Cada cliente pertenece a una ruta y recibe un porcentaje de la ganancia."
+                description={`Ruta de cobro · semana del ${date(week.from)} al ${date(week.to)}. Elija el día para ver los clientes que tocan.`}
                 actions={
                     can('clients.manage') && (
                         <Button asChild>
@@ -48,9 +73,39 @@ export default function ClientsIndex({
                     )
                 }
             />
+
             <Panel>
-                <div className="border-b p-4">
+                <div className="space-y-4 p-4">
+                    <div
+                        className="flex gap-1.5 overflow-x-auto pb-1"
+                        role="group"
+                        aria-label="Día de corte"
+                    >
+                        <DayButton
+                            active={selectedDay === null}
+                            onClick={() => selectDay(null)}
+                        >
+                            Todos
+                        </DayButton>
+                        {WEEK_DAYS.map((d) => (
+                            <DayButton
+                                key={d.value}
+                                active={selectedDay === d.value}
+                                today={today === d.value}
+                                onClick={() => selectDay(d.value)}
+                                title={d.label}
+                            >
+                                {d.short}
+                            </DayButton>
+                        ))}
+                    </div>
+
                     <FilterBar url={clients.index().url}>
+                        <input
+                            type="hidden"
+                            name="day"
+                            value={filters.day ?? ''}
+                        />
                         <FilterField label="Buscar">
                             <Input
                                 name="search"
@@ -74,69 +129,67 @@ export default function ClientsIndex({
                             </NativeSelect>
                         </FilterField>
                     </FilterBar>
-                </div>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Ruta</TableHead>
-                            <TableHead>Cliente</TableHead>
-                            <TableHead>Documento</TableHead>
-                            <TableHead>Teléfono</TableHead>
-                            <TableHead className="text-right">
-                                Comisión
-                            </TableHead>
-                            <TableHead className="text-right">
-                                Máquinas
-                            </TableHead>
-                            <TableHead className="text-right">
-                                Deuda préstamos
-                            </TableHead>
-                            <TableHead>Estado</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {page.data.length === 0 && <EmptyRow colSpan={8} />}
-                        {page.data.map((client) => (
-                            <TableRow key={client.id}>
-                                <TableCell className="font-mono text-xs">
-                                    {client.collection_route?.code}
-                                </TableCell>
-                                <TableCell>
-                                    <Link
-                                        href={clients.show(client.id)}
-                                        className="font-medium underline-offset-4 hover:underline"
-                                    >
-                                        {client.name}
-                                    </Link>
-                                    {client.business_name && (
-                                        <p className="text-xs text-muted-foreground">
-                                            {client.business_name}
-                                        </p>
-                                    )}
-                                </TableCell>
-                                <TableCell>{client.document ?? '—'}</TableCell>
-                                <TableCell>{client.phone ?? '—'}</TableCell>
-                                <TableCell className="text-right tabular-nums">
-                                    {percent(client.commission_percent)}
-                                </TableCell>
-                                <TableCell className="text-right tabular-nums">
-                                    {client.machines_count}
-                                </TableCell>
-                                <TableCell className="text-right tabular-nums">
-                                    {Number(client.loans_balance ?? 0) > 0
-                                        ? money(client.loans_balance)
-                                        : '—'}
-                                </TableCell>
-                                <TableCell>
-                                    <ActiveBadge active={client.is_active} />
-                                </TableCell>
-                            </TableRow>
+
+                    <div className="flex flex-wrap gap-2 text-xs">
+                        {(['done', 'partial', 'pending'] as const).map((s) => (
+                            <Pill key={s} tone={CYCLE_STATUS[s].tone}>
+                                {CYCLE_STATUS[s].label}
+                            </Pill>
                         ))}
-                    </TableBody>
-                </Table>
-                <Pagination page={page} />
+                    </div>
+                </div>
             </Panel>
+
+            {page.data.length === 0 ? (
+                <Panel className="p-8 text-center text-sm text-muted-foreground">
+                    {selectedDay
+                        ? 'No hay clientes asignados a este día.'
+                        : 'No hay clientes para mostrar.'}
+                </Panel>
+            ) : (
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    {page.data.map((client) => (
+                        <RouteClientCard key={client.id} client={client} />
+                    ))}
+                </div>
+            )}
+
+            <Pagination page={page} />
         </Page>
+    );
+}
+
+function DayButton({
+    active,
+    today,
+    onClick,
+    title,
+    children,
+}: {
+    active: boolean;
+    today?: boolean;
+    onClick: () => void;
+    title?: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <button
+            type="button"
+            title={title}
+            aria-pressed={active}
+            onClick={onClick}
+            className={cn(
+                'relative min-w-12 shrink-0 rounded-md border px-3 py-2 text-sm font-medium',
+                active
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'bg-background hover:bg-muted',
+            )}
+        >
+            {children}
+            {today && (
+                <span className="absolute -top-1 -right-1 size-2.5 rounded-full bg-emerald-500 ring-2 ring-background" />
+            )}
+        </button>
     );
 }
 

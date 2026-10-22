@@ -23,15 +23,18 @@ use Illuminate\Support\Carbon;
  * @property string|null $document
  * @property string|null $phone
  * @property string|null $address
+ * @property string|null $latitude
+ * @property string|null $longitude
  * @property string $commission_percent
  * @property string $loss_balance
  * @property int $visit_order
+ * @property int|null $visit_day Día de visita ISO (1 = lunes … 7 = domingo).
  * @property string|null $notes
  * @property bool $is_active
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['collection_route_id', 'name', 'business_name', 'document', 'phone', 'address', 'commission_percent', 'loss_balance', 'visit_order', 'notes', 'is_active'])]
+#[Fillable(['collection_route_id', 'name', 'business_name', 'document', 'phone', 'address', 'latitude', 'longitude', 'commission_percent', 'loss_balance', 'visit_order', 'visit_day', 'notes', 'is_active'])]
 class Client extends Model implements VisibleToUser
 {
     use ChecksVisibility;
@@ -95,6 +98,9 @@ class Client extends Model implements VisibleToUser
         return [
             'commission_percent' => 'decimal:2',
             'loss_balance' => 'decimal:2',
+            'latitude' => 'decimal:7',
+            'longitude' => 'decimal:7',
+            'visit_day' => 'integer',
             'is_active' => 'boolean',
         ];
     }

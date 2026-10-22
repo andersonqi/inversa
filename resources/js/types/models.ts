@@ -67,12 +67,20 @@ export type Client = {
     document: string | null;
     phone: string | null;
     address: string | null;
+    latitude: string | null;
+    longitude: string | null;
     commission_percent: string;
     loss_balance: string;
     visit_order: number;
+    /** Día de visita ISO: 1 = lunes … 7 = domingo. */
+    visit_day: number | null;
     notes: string | null;
     is_active: boolean;
     machines_count?: number;
+    installed_machines_count?: number;
+    collected_machines_count?: number;
+    /** Último corte del cliente en la semana actual. */
+    week_collection_id?: number | null;
     loans_balance?: string | null;
     collection_route?: {
         id: number;
@@ -111,6 +119,8 @@ export type Machine = {
     client?:
         | (IdName & { collection_route?: { id: number; code: string } })
         | null;
+    /** Últimas lecturas (histórico rápido del corte). */
+    recent_readings?: CollectionItem[];
 };
 
 export type CollectionItem = {
@@ -125,6 +135,9 @@ export type CollectionItem = {
     amount_out: string;
     net: string;
     forced: boolean;
+    cash_counted: string | null;
+    notes: string | null;
+    photo_path: string | null;
     machine?: Pick<Machine, 'id' | 'code' | 'brand' | 'model'>;
     collection?: {
         id: number;
@@ -153,8 +166,14 @@ export type Collection = {
     client_paid: string;
     cash_delivered: string;
     notes: string | null;
+    signature_path: string | null;
+    created_at: string;
     items_count?: number;
-    client?: IdName & { business_name?: string | null };
+    client?: IdName & {
+        business_name?: string | null;
+        phone?: string | null;
+        address?: string | null;
+    };
     collection_route?: { id: number; code: string; name?: string };
     office?: IdName;
     user?: IdName;

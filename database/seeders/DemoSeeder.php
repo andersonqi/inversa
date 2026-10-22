@@ -72,6 +72,7 @@ class DemoSeeder extends Seeder
                         'address' => fake()->streetAddress(),
                         'commission_percent' => fake()->randomElement([25, 30, 35, 40]),
                         'visit_order' => $c,
+                        'visit_day' => (($r + $c) % 6) + 1,
                     ]);
 
                     for ($m = 0; $m < fake()->numberBetween(1, 3); $m++) {

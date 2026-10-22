@@ -11,7 +11,9 @@ use App\Models\Loan;
 use App\Models\Machine;
 use App\Models\User;
 use App\Support\Money;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -23,15 +25,33 @@ use Illuminate\Validation\ValidationException;
  *   rebaja de la ganancia de sus otras máquinas en el mismo corte (se liquida el neto total).
  * - Si la parte de la pulpería queda negativa, se acumula como pérdida pendiente del cliente
  *   y se rebaja de sus próximas ganancias.
+ *
+ * Control antifraude: el efectivo contado en cada máquina se compara con lo teórico (neto de
+ * contadores); si la diferencia supera el 15 % la observación de la máquina es obligatoria.
+ * La liquidación siempre se calcula con los contadores.
  */
 class CollectionService
 {
     /**
-     * @param  array{collected_on: string, notes?: string|null, loan_id?: int|null, loan_deduction?: float|string|null, items: list<array{machine_id: int, current_in: int, current_out: int, forced?: bool|string|int|null}>}  $data
+     * Diferencia máxima tolerada entre efectivo contado y teórico sin exigir observación.
+     */
+    public const CASH_TOLERANCE = 0.15;
+
+    /**
+     * Disco privado donde se guardan fotos de contadores y firmas.
+     */
+    public const DISK = 'local';
+
+    private const SIGNATURE_PREFIX = 'data:image/png;base64,';
+
+    /**
+     * @param  array{collected_on: string, notes?: string|null, signature?: string|null, loan_id?: int|null, loan_deduction?: float|string|null, items: list<array{machine_id: int, current_in: int, current_out: int, forced?: bool|string|int|null, cash_counted?: float|string|null, notes?: string|null, photo?: UploadedFile|null}>}  $data
      */
     public function record(User $user, Client $client, array $data): Collection
     {
-        return DB::transaction(function () use ($user, $client, $data) {
+        $signature = $this->decodeSignature($data['signature'] ?? null);
+
+        return DB::transaction(function () use ($user, $client, $data, $signature) {
             $client = Client::query()->with('collectionRoute')->lockForUpdate()->findOrFail($client->id);
 
             $machines = Machine::query()
@@ -41,6 +61,7 @@ class CollectionService
                 ->keyBy('id');
 
             $items = [];
+            $photos = [];
             $errors = [];
 
             foreach ($data['items'] as $index => $row) {
@@ -53,11 +74,11 @@ class CollectionService
                 }
 
                 if ($row['current_in'] < $machine->counter_in) {
-                    $errors["items.$index.current_in"] = "El contador de entrada no puede ser menor al anterior ({$machine->counter_in}).";
+                    $errors["items.$index.current_in"] = "El contador no puede ser menor al anterior registrado ({$machine->counter_in}).";
                 }
 
                 if ($row['current_out'] < $machine->counter_out) {
-                    $errors["items.$index.current_out"] = "El contador de salida no puede ser menor al anterior ({$machine->counter_out}).";
+                    $errors["items.$index.current_out"] = "El contador no puede ser menor al anterior registrado ({$machine->counter_out}).";
                 }
 
                 $creditValue = (float) $machine->credit_value;
@@ -70,6 +91,15 @@ class CollectionService
                     $errors["items.$index.forced"] = "La máquina {$machine->code} está en pérdida (".Money::format($net).'): no se corta hasta que recupere, o márquela como corte forzado.';
                 }
 
+                $cash = isset($row['cash_counted']) && $row['cash_counted'] !== '' ? round((float) $row['cash_counted'], 2) : null;
+                $notes = trim((string) ($row['notes'] ?? ''));
+
+                if ($notes === '' && self::exceedsCashTolerance($net, $cash)) {
+                    $errors["items.$index.notes"] = 'La diferencia entre el efectivo contado y lo teórico supera el 15 %: escriba una observación.';
+                }
+
+                $photos[$machine->id] = $row['photo'] ?? null;
+
                 $items[] = [
                     'machine' => $machine,
                     'previous_in' => $machine->counter_in,
@@ -81,6 +111,8 @@ class CollectionService
                     'amount_out' => $amountOut,
                     'net' => $net,
                     'forced' => $net < 0 && $forced,
+                    'cash_counted' => $cash,
+                    'notes' => $notes === '' ? null : $notes,
                 ];
             }
 
@@ -122,12 +154,27 @@ class CollectionService
                 $machine = $item['machine'];
                 unset($item['machine']);
 
-                $collection->items()->create(['machine_id' => $machine->id, ...$item]);
+                $photo = $photos[$machine->id] ?? null;
+                $photoPath = $photo instanceof UploadedFile
+                    ? $photo->store("collections/{$collection->id}", self::DISK)
+                    : null;
+
+                $collection->items()->create([
+                    'machine_id' => $machine->id,
+                    ...$item,
+                    'photo_path' => is_string($photoPath) ? $photoPath : null,
+                ]);
 
                 $machine->update([
                     'counter_in' => $item['current_in'],
                     'counter_out' => $item['current_out'],
                 ]);
+            }
+
+            if ($signature !== null) {
+                $path = "collections/{$collection->id}/firma.png";
+                Storage::disk(self::DISK)->put($path, $signature);
+                $collection->update(['signature_path' => $path]);
             }
 
             $client->update(['loss_balance' => $settlement['loss_balance']]);
@@ -180,10 +227,32 @@ class CollectionService
     }
 
     /**
+     * Indica si el efectivo contado difiere de lo teórico (neto) más de lo tolerado.
+     * Sin efectivo contado no se aplica el control.
+     */
+    public static function exceedsCashTolerance(float $theoretical, ?float $cash): bool
+    {
+        if ($cash === null) {
+            return false;
+        }
+
+        $difference = round(abs($cash - $theoretical), 2);
+        $base = abs($theoretical);
+
+        if ($base === 0.0) {
+            return $difference > 0;
+        }
+
+        return $difference > round($base * self::CASH_TOLERANCE, 2);
+    }
+
+    /**
      * Anula un corte restaurando contadores, la pérdida pendiente de la pulpería y el préstamo.
      */
     public function void(Collection $collection): void
     {
+        $directory = "collections/{$collection->id}";
+
         DB::transaction(function () use ($collection) {
             $collection->load('items.machine', 'loanPayment.loan', 'client');
 
@@ -230,6 +299,29 @@ class CollectionService
 
             $loan?->refreshBalance();
         });
+
+        // Fotos y firma del corte anulado.
+        Storage::disk(self::DISK)->deleteDirectory($directory);
+    }
+
+    /**
+     * Convierte la firma (data URL PNG del canvas) en binario.
+     */
+    private function decodeSignature(?string $dataUrl): ?string
+    {
+        if ($dataUrl === null || $dataUrl === '') {
+            return null;
+        }
+
+        $binary = str_starts_with($dataUrl, self::SIGNATURE_PREFIX)
+            ? base64_decode(substr($dataUrl, strlen(self::SIGNATURE_PREFIX)), true)
+            : false;
+
+        if ($binary === false || ! str_starts_with($binary, "\x89PNG")) {
+            throw ValidationException::withMessages(['signature' => 'La firma no es válida; vuelva a firmar.']);
+        }
+
+        return $binary;
     }
 
     /**

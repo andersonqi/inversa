@@ -42,10 +42,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware("can:{$permission}.view");
     }
 
+    // Ubicación del negocio tomada en campo (quien edita clientes o registra cortes).
+    Route::post('clients/{client}/location', [ClientController::class, 'updateLocation'])->name('clients.location')->middleware('can:clients.view');
+
     Route::get('collections', [CollectionController::class, 'index'])->name('collections.index')->middleware('can:collections.view');
     Route::get('collections/create', [CollectionController::class, 'create'])->name('collections.create')->middleware('can:collections.create');
     Route::post('collections', [CollectionController::class, 'store'])->name('collections.store')->middleware('can:collections.create');
     Route::get('collections/{collection}', [CollectionController::class, 'show'])->name('collections.show')->middleware('can:collections.view');
+    Route::get('collections/{collection}/receipt', [CollectionController::class, 'receipt'])->name('collections.receipt')->middleware('can:collections.view');
+    Route::get('collections/{collection}/signature', [CollectionController::class, 'signature'])->name('collections.signature')->middleware('can:collections.view');
+    Route::get('collections/{collection}/items/{item}/photo', [CollectionController::class, 'photo'])->name('collections.items.photo')->middleware('can:collections.view');
     Route::delete('collections/{collection}', [CollectionController::class, 'destroy'])->name('collections.destroy')->middleware('can:collections.delete');
 
     Route::get('loans', [LoanController::class, 'index'])->name('loans.index')->middleware('can:loans.view');

@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { Ban } from 'lucide-react';
+import { Ban, Camera, Receipt } from 'lucide-react';
 import { Pill } from '@/components/app/badges';
 import { ConfirmAction } from '@/components/app/confirm-action';
 import { Page, PageHeader, Panel } from '@/components/app/page';
@@ -18,7 +18,7 @@ import { date, money, num, percent, signClass } from '@/lib/format';
 import clients from '@/routes/clients';
 import collections from '@/routes/collections';
 import machines from '@/routes/machines';
-import type { Collection } from '@/types';
+import type { Collection, CollectionItem } from '@/types';
 
 export default function CollectionShow({
     collection: c,
@@ -45,19 +45,26 @@ export default function CollectionShow({
                     </>
                 }
                 actions={
-                    can('collections.delete') && (
-                        <ConfirmAction
-                            url={collections.destroy(c.id).url}
-                            title="¿Anular este corte?"
-                            description="Se restauran los contadores de las máquinas y se revierte el descuento al préstamo. Solo es posible si no hay cortes posteriores de estas máquinas."
-                            confirmLabel="Anular corte"
-                            trigger={
-                                <Button variant="outline">
-                                    <Ban /> Anular
-                                </Button>
-                            }
-                        />
-                    )
+                    <>
+                        <Button asChild>
+                            <Link href={collections.receipt(c.id)}>
+                                <Receipt /> Recibo
+                            </Link>
+                        </Button>
+                        {can('collections.delete') && (
+                            <ConfirmAction
+                                url={collections.destroy(c.id).url}
+                                title="¿Anular este corte?"
+                                description="Se restauran los contadores de las máquinas y se revierte el descuento al préstamo. Solo es posible si no hay cortes posteriores de estas máquinas."
+                                confirmLabel="Anular corte"
+                                trigger={
+                                    <Button variant="outline">
+                                        <Ban /> Anular
+                                    </Button>
+                                }
+                            />
+                        )}
+                    </>
                 }
             />
 
@@ -76,6 +83,12 @@ export default function CollectionShow({
                             <TableHead className="text-right">Jugado</TableHead>
                             <TableHead className="text-right">Pagado</TableHead>
                             <TableHead className="text-right">Neto</TableHead>
+                            <TableHead className="text-right">
+                                Contado
+                            </TableHead>
+                            <TableHead className="text-right">
+                                Diferencia
+                            </TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -94,6 +107,27 @@ export default function CollectionShow({
                                                 Corte forzado
                                             </Pill>
                                         </span>
+                                    )}
+                                    {item.photo_path && (
+                                        <a
+                                            href={
+                                                collections.items.photo({
+                                                    collection: c.id,
+                                                    item: item.id,
+                                                }).url
+                                            }
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="ml-2 inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:underline"
+                                        >
+                                            <Camera className="size-3.5" />
+                                            Foto
+                                        </a>
+                                    )}
+                                    {item.notes && (
+                                        <p className="mt-1 max-w-56 text-xs whitespace-normal text-muted-foreground">
+                                            {item.notes}
+                                        </p>
                                     )}
                                 </TableCell>
                                 <TableCell className="text-right text-xs tabular-nums">
@@ -118,6 +152,12 @@ export default function CollectionShow({
                                 >
                                     {money(item.net)}
                                 </TableCell>
+                                <TableCell className="text-right tabular-nums">
+                                    {item.cash_counted === null
+                                        ? '—'
+                                        : money(item.cash_counted)}
+                                </TableCell>
+                                <CashDifference item={item} />
                             </TableRow>
                         ))}
                     </TableBody>
@@ -137,6 +177,7 @@ export default function CollectionShow({
                             >
                                 {money(c.net)}
                             </TableCell>
+                            <TableCell colSpan={2} />
                         </TableRow>
                     </TableFooter>
                 </Table>
@@ -181,15 +222,42 @@ export default function CollectionShow({
                         />
                     </dl>
                 </Panel>
-                {c.notes && (
-                    <Panel title="Observaciones">
-                        <p className="p-4 text-sm whitespace-pre-line">
-                            {c.notes}
-                        </p>
-                    </Panel>
-                )}
+                <div className="space-y-6">
+                    {c.notes && (
+                        <Panel title="Observaciones">
+                            <p className="p-4 text-sm whitespace-pre-line">
+                                {c.notes}
+                            </p>
+                        </Panel>
+                    )}
+                    {c.signature_path && (
+                        <Panel title="Firma del tendero">
+                            <div className="p-4">
+                                <img
+                                    src={collections.signature(c.id).url}
+                                    alt="Firma del tendero"
+                                    className="h-28 rounded-md border bg-white object-contain"
+                                />
+                            </div>
+                        </Panel>
+                    )}
+                </div>
             </div>
         </Page>
+    );
+}
+
+function CashDifference({ item }: { item: CollectionItem }) {
+    if (item.cash_counted === null) {
+        return <TableCell className="text-right">—</TableCell>;
+    }
+
+    const diff = Number(item.cash_counted) - Number(item.net);
+
+    return (
+        <TableCell className={`text-right tabular-nums ${signClass(diff)}`}>
+            {money(diff)}
+        </TableCell>
     );
 }
 

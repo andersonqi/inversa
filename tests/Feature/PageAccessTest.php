@@ -52,6 +52,8 @@ class PageAccessTest extends TestCase
             'cortes' => ['/collections?search=abar&route_id={route}', 'collections/index', 'collections.view'],
             'registrar corte' => ['/collections/create?client_id={client}', 'collections/create', 'collections.create'],
             'corte' => ['/collections/{collection}', 'collections/show', 'collections.view'],
+            'recibo' => ['/collections/{collection}/receipt', 'collections/receipt', 'collections.view'],
+            'clientes del dia' => ['/clients?day=1', 'clients/index', 'clients.view'],
             'gastos' => ['/expenses?category=fuel', 'expenses/index', 'expenses.view'],
             'nuevo gasto' => ['/expenses/create', 'expenses/form', 'expenses.manage'],
             'prestamos' => ['/loans?status=all&search=abar', 'loans/index', 'loans.view'],
