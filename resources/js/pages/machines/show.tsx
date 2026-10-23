@@ -3,6 +3,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { MachineStatusBadge } from '@/components/app/badges';
 import { ConfirmAction } from '@/components/app/confirm-action';
 import { EmptyRow } from '@/components/app/empty-row';
+import { MachineMoveActions } from '@/components/app/machine-move-actions';
 import { Page, PageHeader, Panel } from '@/components/app/page';
 import { Pagination } from '@/components/app/pagination';
 import { StatCard } from '@/components/app/stat-card';
@@ -20,12 +21,26 @@ import { date, money, num, signClass } from '@/lib/format';
 import clients from '@/routes/clients';
 import collections from '@/routes/collections';
 import machines from '@/routes/machines';
-import type { CollectionItem, Machine, Paginated } from '@/types';
+import type {
+    CollectionItem,
+    Machine,
+    MachineMovement,
+    MoveClient,
+    Paginated,
+} from '@/types';
+
+const MOVEMENT_LABELS: Record<MachineMovement['type'], string> = {
+    transfer: 'Transferencia',
+    warehouse: 'A bodega',
+    install: 'Instalación',
+};
 
 export default function MachineShow({
     machine,
     readings,
     totals,
+    movements,
+    moveClients,
 }: {
     machine: Machine;
     readings: Paginated<CollectionItem>;
@@ -35,6 +50,8 @@ export default function MachineShow({
         amount_out: string;
         net: string;
     };
+    movements: MachineMovement[];
+    moveClients: MoveClient[];
 }) {
     const can = useCan();
     const payout =
@@ -70,29 +87,36 @@ export default function MachineShow({
                     </span>
                 }
                 actions={
-                    can('machines.manage') && (
-                        <>
-                            <Button variant="outline" asChild>
-                                <Link href={machines.edit(machine.id)}>
-                                    <Pencil /> Editar / reubicar
-                                </Link>
-                            </Button>
-                            <ConfirmAction
-                                url={machines.destroy(machine.id).url}
-                                title={`¿Eliminar la máquina ${machine.code}?`}
-                                description="Solo se pueden eliminar máquinas sin cortes; en otro caso márquela como dada de baja."
-                                trigger={
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        aria-label="Eliminar"
-                                    >
-                                        <Trash2 />
-                                    </Button>
-                                }
-                            />
-                        </>
-                    )
+                    <>
+                        <MachineMoveActions
+                            machine={machine}
+                            clients={moveClients}
+                            size="default"
+                        />
+                        {can('machines.manage') && (
+                            <>
+                                <Button variant="outline" asChild>
+                                    <Link href={machines.edit(machine.id)}>
+                                        <Pencil /> Editar / reubicar
+                                    </Link>
+                                </Button>
+                                <ConfirmAction
+                                    url={machines.destroy(machine.id).url}
+                                    title={`¿Eliminar la máquina ${machine.code}?`}
+                                    description="Solo se pueden eliminar máquinas sin cortes; en otro caso márquela como dada de baja."
+                                    trigger={
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            aria-label="Eliminar"
+                                        >
+                                            <Trash2 />
+                                        </Button>
+                                    }
+                                />
+                            </>
+                        )}
+                    </>
                 }
             />
 
@@ -181,6 +205,58 @@ export default function MachineShow({
                     </TableBody>
                 </Table>
                 <Pagination page={readings} />
+            </Panel>
+
+            <Panel title="Movimientos">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Fecha</TableHead>
+                            <TableHead>Movimiento</TableHead>
+                            <TableHead>Desde</TableHead>
+                            <TableHead>Hacia</TableHead>
+                            <TableHead className="text-right">
+                                Contadores
+                            </TableHead>
+                            <TableHead>Motivo</TableHead>
+                            <TableHead>Usuario</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {movements.length === 0 && (
+                            <EmptyRow colSpan={7}>
+                                Sin movimientos registrados.
+                            </EmptyRow>
+                        )}
+                        {movements.map((mv) => (
+                            <TableRow key={mv.id}>
+                                <TableCell className="tabular-nums">
+                                    {new Date(mv.created_at).toLocaleString(
+                                        'es-GT',
+                                        {
+                                            dateStyle: 'short',
+                                            timeStyle: 'short',
+                                        },
+                                    )}
+                                </TableCell>
+                                <TableCell>{MOVEMENT_LABELS[mv.type]}</TableCell>
+                                <TableCell>
+                                    {mv.from_client?.name ?? 'Bodega'}
+                                </TableCell>
+                                <TableCell>
+                                    {mv.to_client?.name ?? 'Bodega'}
+                                </TableCell>
+                                <TableCell className="text-right text-xs tabular-nums">
+                                    {num(mv.counter_in)} / {num(mv.counter_out)}
+                                </TableCell>
+                                <TableCell className="max-w-64 text-xs whitespace-normal">
+                                    {mv.reason ?? '—'}
+                                </TableCell>
+                                <TableCell>{mv.user?.name ?? '—'}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
             </Panel>
         </Page>
     );

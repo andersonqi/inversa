@@ -33,6 +33,7 @@ class Permissions
         'Máquinas' => [
             'machines.view' => 'Ver máquinas',
             'machines.manage' => 'Crear, editar e instalar máquinas',
+            'machines.move' => 'Mover máquinas: transferir, enviar a bodega e instalar',
         ],
         'Cortes' => [
             'collections.view' => 'Ver cortes',

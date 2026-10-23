@@ -8,6 +8,7 @@ use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\LoanController;
 use App\Http\Controllers\LoanPaymentController;
 use App\Http\Controllers\MachineController;
+use App\Http\Controllers\MachineMovementController;
 use App\Http\Controllers\OfficeController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RoleController;
@@ -41,6 +42,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->only(method_exists($controller, 'show') ? ['index', 'show'] : ['index'])
             ->middleware("can:{$permission}.view");
     }
+
+    // Logística de máquinas en campo.
+    Route::middleware('can:machines.move')->prefix('machines/{machine}')->name('machines.')->controller(MachineMovementController::class)->group(function () {
+        Route::post('transfer', 'transfer')->name('transfer');
+        Route::post('warehouse', 'warehouse')->name('warehouse');
+        Route::post('install', 'install')->name('install');
+    });
 
     // Ubicación del negocio tomada en campo (quien edita clientes o registra cortes).
     Route::post('clients/{client}/location', [ClientController::class, 'updateLocation'])->name('clients.location')->middleware('can:clients.view');

@@ -12,6 +12,7 @@ import type { ComponentProps, ReactNode } from 'react';
 import { useState } from 'react';
 import type { Tone } from '@/components/app/badges';
 import { Pill } from '@/components/app/badges';
+import { MachineMoveActions } from '@/components/app/machine-move-actions';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -28,7 +29,7 @@ import clients from '@/routes/clients';
 import collections from '@/routes/collections';
 import loans from '@/routes/loans';
 import machines from '@/routes/machines';
-import type { Client } from '@/types';
+import type { Client, MoveClient } from '@/types';
 
 export type CycleStatus = 'done' | 'partial' | 'pending' | 'empty';
 
@@ -69,7 +70,13 @@ export const CYCLE_STATUS: Record<
     empty: { label: 'Sin máquinas', tone: 'gray', card: 'bg-card opacity-70' },
 };
 
-export function RouteClientCard({ client }: { client: Client }) {
+export function RouteClientCard({
+    client,
+    moveClients,
+}: {
+    client: Client;
+    moveClients: MoveClient[];
+}) {
     const can = useCan();
     const status = cycleStatus(client);
     const meta = CYCLE_STATUS[status];
@@ -133,7 +140,7 @@ export function RouteClientCard({ client }: { client: Client }) {
                         </Link>
                     </Button>
                 )}
-                <MachinesAction client={client} />
+                <MachinesAction client={client} moveClients={moveClients} />
                 <LoansAction client={client} />
                 <LocationAction client={client} />
                 {client.week_collection_id ? (
@@ -174,7 +181,13 @@ function ActionButton({
     );
 }
 
-function MachinesAction({ client }: { client: Client }) {
+function MachinesAction({
+    client,
+    moveClients,
+}: {
+    client: Client;
+    moveClients: MoveClient[];
+}) {
     const can = useCan();
     const list = client.machines ?? [];
 
@@ -197,7 +210,7 @@ function MachinesAction({ client }: { client: Client }) {
                         {list.map((m) => (
                             <li
                                 key={m.id}
-                                className="flex items-center justify-between gap-2 px-3 py-2"
+                                className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
                             >
                                 <div>
                                     {can('machines.view') ? (
@@ -223,6 +236,12 @@ function MachinesAction({ client }: { client: Client }) {
                                     <br />
                                     Out {num(m.counter_out)}
                                 </p>
+                                <div className="flex w-full justify-end gap-1.5 empty:hidden">
+                                    <MachineMoveActions
+                                        machine={m}
+                                        clients={moveClients}
+                                    />
+                                </div>
                             </li>
                         ))}
                     </ul>

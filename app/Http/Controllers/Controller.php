@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Client;
 use App\Models\CollectionRoute;
 use App\Models\Contracts\VisibleToUser;
 use App\Models\Office;
@@ -46,6 +47,30 @@ abstract class Controller
                 'id' => $route->id,
                 'name' => "{$route->code} · {$route->name}",
                 'office_id' => $route->office_id,
+            ]);
+    }
+
+    /**
+     * Clientes activos a los que el usuario puede mover máquinas (vacío sin el permiso).
+     *
+     * @return Collection<int, array{id: int, name: string, office_id: int}>
+     */
+    protected function moveClientOptions(User $user): Collection
+    {
+        if (! $user->can('machines.move')) {
+            return collect();
+        }
+
+        return Client::query()
+            ->visibleTo($user)
+            ->where('is_active', true)
+            ->with('collectionRoute:id,code,office_id')
+            ->orderBy('name')
+            ->get(['id', 'name', 'collection_route_id'])
+            ->map(fn (Client $client) => [
+                'id' => $client->id,
+                'name' => "{$client->name} ({$client->collectionRoute->code})",
+                'office_id' => $client->collectionRoute->office_id,
             ]);
     }
 

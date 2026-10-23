@@ -123,6 +123,24 @@ export type Machine = {
     recent_readings?: CollectionItem[];
 };
 
+/** Cliente destino para mover máquinas. */
+export type MoveClient = IdName & { office_id: number };
+
+export type MachineMovement = {
+    id: number;
+    machine_id: number;
+    type: 'transfer' | 'warehouse' | 'install';
+    from_client_id: number | null;
+    to_client_id: number | null;
+    counter_in: number;
+    counter_out: number;
+    reason: string | null;
+    created_at: string;
+    user?: IdName | null;
+    from_client?: IdName | null;
+    to_client?: IdName | null;
+};
+
 export type CollectionItem = {
     id: number;
     machine_id: number;

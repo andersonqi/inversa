@@ -7,6 +7,7 @@ import {
 } from '@/components/app/badges';
 import { ConfirmAction } from '@/components/app/confirm-action';
 import { EmptyRow } from '@/components/app/empty-row';
+import { MachineMoveActions } from '@/components/app/machine-move-actions';
 import { Page, PageHeader, Panel } from '@/components/app/page';
 import { Pagination } from '@/components/app/pagination';
 import { Button } from '@/components/ui/button';
@@ -25,16 +26,19 @@ import clients from '@/routes/clients';
 import collections from '@/routes/collections';
 import loans from '@/routes/loans';
 import machines from '@/routes/machines';
-import type { Client, Collection, Paginated } from '@/types';
+import type { Client, Collection, MoveClient, Paginated } from '@/types';
 
 export default function ClientShow({
     client,
     collections: recentPage,
+    moveClients,
 }: {
     client: Client;
     collections: Paginated<Collection>;
+    moveClients: MoveClient[];
 }) {
     const can = useCan();
+    const canMove = can('machines.move');
     const route = client.collection_route;
 
     return (
@@ -157,11 +161,12 @@ export default function ClientShow({
                                     Salida
                                 </TableHead>
                                 <TableHead>Estado</TableHead>
+                                {canMove && <TableHead />}
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {client.machines?.length === 0 && (
-                                <EmptyRow colSpan={5}>
+                                <EmptyRow colSpan={canMove ? 6 : 5}>
                                     Sin máquinas instaladas.
                                 </EmptyRow>
                             )}
@@ -189,6 +194,16 @@ export default function ClientShow({
                                     <TableCell>
                                         <MachineStatusBadge status={m.status} />
                                     </TableCell>
+                                    {canMove && (
+                                        <TableCell>
+                                            <div className="flex justify-end gap-1.5">
+                                                <MachineMoveActions
+                                                    machine={m}
+                                                    clients={moveClients}
+                                                />
+                                            </div>
+                                        </TableCell>
+                                    )}
                                 </TableRow>
                             ))}
                         </TableBody>

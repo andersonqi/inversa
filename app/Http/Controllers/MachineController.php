@@ -31,6 +31,8 @@ class MachineController extends Controller
             'filters' => $request->only('search', 'status', 'office_id'),
             'offices' => $this->officeOptions($request->user()),
             'statuses' => MachineStatus::options(),
+            // Destinos para "Asignar a cliente" desde bodega.
+            'moveClients' => $this->moveClientOptions($request->user()),
         ]);
     }
 
@@ -51,6 +53,12 @@ class MachineController extends Controller
             'totals' => $machine->collectionItems()
                 ->selectRaw('count(*) as readings, coalesce(sum(amount_in), 0) as amount_in, coalesce(sum(amount_out), 0) as amount_out, coalesce(sum(net), 0) as net')
                 ->first(),
+            'movements' => $machine->movements()
+                ->with(['user:id,name', 'fromClient:id,name', 'toClient:id,name'])
+                ->latest('id')
+                ->limit(20)
+                ->get(),
+            'moveClients' => $this->moveClientOptions($request->user()),
         ]);
     }
 

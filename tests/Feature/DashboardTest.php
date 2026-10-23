@@ -51,6 +51,57 @@ class DashboardTest extends TestCase
                     ->has('recent', 2)));
     }
 
+    public function test_route_stats_show_coverage_weekly_performance_and_stale_loans(): void
+    {
+        $this->buildOperation();
+
+        $todayIndex = now()->dayOfWeekIso - 1;
+
+        $this->actingAs($this->admin)->get(route('dashboard'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->missing('route')
+                ->loadDeferredProps('route', fn (Assert $reload) => $reload
+                    ->where('route.coverage.clients_visited', 2)
+                    ->where('route.coverage.clients_total', 2)
+                    ->where('route.coverage.machines_collected', 2)
+                    ->where('route.coverage.machines_total', 2)
+                    ->has('route.weekly', 4)
+                    ->where('route.weekly.0.total', 2500)
+                    ->where("route.weekly.0.days.{$todayIndex}", 2500)
+                    ->where('route.weekly.1.total', 0)
+                    // MAQ-1 ganó ₡5.000 y MAQ-2 perdió ₡1.000: promedio ₡2.000.
+                    ->where('route.performance.excellent', 1)
+                    ->where('route.performance.good', 0)
+                    ->where('route.performance.poor', 1)
+                    ->where('route.performance.worst.0.code', 'MAQ-2')
+                    ->has('route.shortages', 0)
+                    // Préstamo otorgado hace 3 semanas, sin abonos.
+                    ->where('route.arrears.count', 1)
+                    ->where('route.arrears.loans.0.days', 21)
+                    ->where('route.arrears.loans.0.last_payment_on', null)));
+    }
+
+    public function test_route_stats_list_shortages_and_skip_loans_with_recent_payments(): void
+    {
+        $this->buildOperation();
+
+        $this->collection->items()->firstOrFail()->update(['cash_counted' => 4200]);
+        $this->loan->payments()->create([
+            'user_id' => $this->collector->id,
+            'amount' => 15000,
+            'paid_on' => now()->subDays(3)->toDateString(),
+        ]);
+
+        $this->actingAs($this->collector)->get(route('dashboard'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->loadDeferredProps('route', fn (Assert $reload) => $reload
+                    ->where('route.coverage.clients_total', 1)
+                    ->has('route.shortages', 1)
+                    ->where('route.shortages.0.code', 'MAQ-1')
+                    ->where('route.shortages.0.difference', -800)
+                    ->where('route.arrears.count', 0)));
+    }
+
     public function test_supervisor_dashboard_only_counts_their_office(): void
     {
         $this->buildOperation();

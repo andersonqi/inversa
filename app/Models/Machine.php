@@ -62,6 +62,14 @@ class Machine extends Model implements VisibleToUser
     }
 
     /**
+     * @return HasMany<MachineMovement, $this>
+     */
+    public function movements(): HasMany
+    {
+        return $this->hasMany(MachineMovement::class);
+    }
+
+    /**
      * @param  Builder<self>  $query
      */
     #[Scope]

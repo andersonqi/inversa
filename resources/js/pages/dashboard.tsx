@@ -10,6 +10,8 @@ import {
 import { DailyBars } from '@/components/app/daily-bars';
 import { EmptyRow } from '@/components/app/empty-row';
 import { Page, PageHeader, Panel } from '@/components/app/page';
+import type { RouteStatsData } from '@/components/app/route-stats';
+import { RouteStats } from '@/components/app/route-stats';
 import { StatCard } from '@/components/app/stat-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -44,10 +46,12 @@ export default function Dashboard({
     stats,
     series,
     recent,
+    route,
 }: {
     stats: Stats;
     series?: { date: string; value: number }[];
     recent?: Collection[];
+    route?: RouteStatsData;
 }) {
     const can = useCan();
 
@@ -167,6 +171,18 @@ export default function Dashboard({
                     </Table>
                 </Panel>
             </div>
+
+            <Deferred
+                data="route"
+                fallback={
+                    <div className="grid gap-6 sm:grid-cols-2">
+                        <Skeleton className="h-40" />
+                        <Skeleton className="h-40" />
+                    </div>
+                }
+            >
+                {route ? <RouteStats data={route} /> : null}
+            </Deferred>
         </Page>
     );
 }

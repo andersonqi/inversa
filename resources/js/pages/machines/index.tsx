@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react';
 import { MachineStatusBadge } from '@/components/app/badges';
 import { EmptyRow } from '@/components/app/empty-row';
 import { FilterBar, FilterField } from '@/components/app/filter-bar';
+import { MachineMoveActions } from '@/components/app/machine-move-actions';
 import { Page, PageHeader, Panel } from '@/components/app/page';
 import { Pagination } from '@/components/app/pagination';
 import { Button } from '@/components/ui/button';
@@ -20,20 +21,30 @@ import { useCan } from '@/hooks/use-can';
 import { money, num } from '@/lib/format';
 import clients from '@/routes/clients';
 import machines from '@/routes/machines';
-import type { IdName, Machine, Option, Paginated } from '@/types';
+import type {
+    IdName,
+    Machine,
+    MoveClient,
+    Option,
+    Paginated,
+} from '@/types';
 
 export default function MachinesIndex({
     machines: page,
     filters,
     offices,
     statuses,
+    moveClients,
 }: {
     machines: Paginated<Machine>;
     filters: { search?: string; status?: string; office_id?: string };
     offices: IdName[];
     statuses: Option[];
+    moveClients: MoveClient[];
 }) {
     const can = useCan();
+    const canMove = can('machines.move');
+    const columns = canMove ? 9 : 8;
 
     return (
         <Page>
@@ -107,10 +118,17 @@ export default function MachinesIndex({
                             </TableHead>
                             <TableHead className="text-right">Salida</TableHead>
                             <TableHead>Estado</TableHead>
+                            {canMove && (
+                                <TableHead className="text-right">
+                                    Logística
+                                </TableHead>
+                            )}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {page.data.length === 0 && <EmptyRow colSpan={8} />}
+                        {page.data.length === 0 && (
+                            <EmptyRow colSpan={columns} />
+                        )}
                         {page.data.map((m) => (
                             <TableRow key={m.id}>
                                 <TableCell>
@@ -164,6 +182,16 @@ export default function MachinesIndex({
                                 <TableCell>
                                     <MachineStatusBadge status={m.status} />
                                 </TableCell>
+                                {canMove && (
+                                    <TableCell>
+                                        <div className="flex justify-end gap-1.5">
+                                            <MachineMoveActions
+                                                machine={m}
+                                                clients={moveClients}
+                                            />
+                                        </div>
+                                    </TableCell>
+                                )}
                             </TableRow>
                         ))}
                     </TableBody>

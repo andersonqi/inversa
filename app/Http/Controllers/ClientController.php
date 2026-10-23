@@ -30,7 +30,7 @@ class ClientController extends Controller
                 'machines' => fn ($q) => $q
                     ->where('status', MachineStatus::Installed)
                     ->orderBy('code')
-                    ->select(['id', 'client_id', 'code', 'brand', 'model', 'credit_value', 'counter_in', 'counter_out', 'status']),
+                    ->select(['id', 'office_id', 'client_id', 'code', 'brand', 'model', 'credit_value', 'counter_in', 'counter_out', 'status']),
                 'activeLoans:id,client_id,balance,installment_amount',
             ])
             ->withCount([
@@ -60,6 +60,7 @@ class ClientController extends Controller
             'routes' => $this->routeOptions($request->user()),
             'today' => now()->dayOfWeekIso,
             'week' => ['from' => $week[0], 'to' => $week[1]],
+            'moveClients' => $this->moveClientOptions($request->user()),
         ]);
     }
 
@@ -94,6 +95,7 @@ class ClientController extends Controller
 
         return Inertia::render('clients/show', [
             'client' => $client,
+            'moveClients' => $this->moveClientOptions($request->user()),
             'collections' => $client->collections()
                 ->with('user:id,name')
                 ->latest('collected_on')

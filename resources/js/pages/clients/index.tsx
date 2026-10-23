@@ -16,7 +16,7 @@ import { date } from '@/lib/format';
 import { WEEK_DAYS } from '@/lib/route-tools';
 import { cn } from '@/lib/utils';
 import clients from '@/routes/clients';
-import type { Client, IdName, Paginated } from '@/types';
+import type { Client, IdName, MoveClient, Paginated } from '@/types';
 
 type Filters = { search?: string; route_id?: string; day?: string };
 
@@ -26,12 +26,14 @@ export default function ClientsIndex({
     routes,
     today,
     week,
+    moveClients,
 }: {
     clients: Paginated<Client>;
     filters: Filters;
     routes: IdName[];
     today: number;
     week: { from: string; to: string };
+    moveClients: MoveClient[];
 }) {
     const can = useCan();
     const selectedDay = filters.day ? Number(filters.day) : null;
@@ -149,7 +151,11 @@ export default function ClientsIndex({
             ) : (
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {page.data.map((client) => (
-                        <RouteClientCard key={client.id} client={client} />
+                        <RouteClientCard
+                            key={client.id}
+                            client={client}
+                            moveClients={moveClients}
+                        />
                     ))}
                 </div>
             )}
