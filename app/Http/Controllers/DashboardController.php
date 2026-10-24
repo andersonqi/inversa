@@ -11,6 +11,7 @@ use App\Models\Expense;
 use App\Models\Loan;
 use App\Models\Machine;
 use App\Models\User;
+use App\Support\PerformanceThresholds;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
@@ -163,52 +164,72 @@ class DashboardController extends Controller
     }
 
     /**
-     * Clasifica las máquinas instaladas por su ganancia neta del período frente al promedio:
-     * Excelente ≥ 125 % del promedio, Insuficiente < 50 % del promedio o sin ganancia, Bueno el resto.
+     * Clasifica las máquinas instaladas por su ganancia neta promedio por semana en su
+     * ubicación actual (últimos 30 días, o desde su instalación si es más reciente, con un
+     * mínimo de una semana), según los montos configurados (PerformanceThresholds).
      *
      * @param  array{0: string, 1: string}  $period
-     * @return array{average: float, excellent: int, good: int, poor: int, worst: array<int, array{machine_id: int, code: string, client: string|null, net: float}>}
+     * @return array{average: float, excellent: int, good: int, poor: int, thresholds: array{excellent: float, poor: float, excellent_presets: list<int>, poor_presets: list<int>}, worst: array<int, array{machine_id: int, code: string, client: string|null, net: float, weekly: float}>}
      */
     private function performance(User $user, array $period): array
     {
+        $thresholds = PerformanceThresholds::current();
+        $start = CarbonImmutable::parse($period[0]);
+        $end = CarbonImmutable::parse($period[1]);
+
         $machines = Machine::query()
             ->visibleTo($user)
             ->where('status', MachineStatus::Installed)
             ->with('client:id,name')
-            ->withSum(['collectionItems as period_net' => fn ($q) => $q->whereHas('collection', fn ($c) => $c->whereBetween('collected_on', $period))], 'net')
-            ->get(['id', 'code', 'client_id']);
+            ->withSum(['collectionItems as period_net' => fn ($q) => $q->whereHas('collection', fn ($c) => $c
+                ->whereBetween('collected_on', $period)
+                // Solo lo cobrado desde que está en su ubicación actual.
+                ->whereRaw('collections.collected_on >= coalesce(machines.installed_at, ?)', [$period[0]]))], 'net')
+            ->get(['id', 'code', 'client_id', 'installed_at']);
 
-        $nets = $machines->mapWithKeys(fn (Machine $m) => [$m->id => round((float) $m->getAttribute('period_net'), 2)]);
-        $average = $machines->isEmpty() ? 0.0 : round((float) $nets->avg(), 2);
+        $rows = $machines->map(function (Machine $machine) use ($start, $end, $thresholds) {
+            $since = $machine->installed_at && $machine->installed_at->gt($start)
+                ? CarbonImmutable::parse($machine->installed_at->toDateString())
+                : $start;
+            $days = max(7, (int) floor($since->diffInDays($end)) + 1);
+            $net = round((float) $machine->getAttribute('period_net'), 2);
+            $weekly = round($net / ($days / 7), 2);
 
-        $classify = function (float $net) use ($average): string {
-            if ($net <= 0 || $net < $average * 0.5) {
-                return 'poor';
-            }
-
-            return $net >= $average * 1.25 ? 'excellent' : 'good';
-        };
+            return [
+                'machine' => $machine,
+                'net' => $net,
+                'weekly' => $weekly,
+                'level' => $thresholds->classify($weekly),
+            ];
+        });
 
         $counts = ['excellent' => 0, 'good' => 0, 'poor' => 0];
 
-        foreach ($nets as $net) {
-            $counts[$classify($net)]++;
+        foreach ($rows as $row) {
+            $counts[$row['level']]++;
         }
 
-        $worst = $machines
-            ->filter(fn (Machine $m) => $classify($nets[$m->id]) === 'poor')
-            ->sortBy(fn (Machine $m) => $nets[$m->id])
+        $worst = $rows
+            ->filter(fn (array $row) => $row['level'] === 'poor')
+            ->sortBy('weekly')
             ->take(5)
-            ->map(fn (Machine $m) => [
-                'machine_id' => $m->id,
-                'code' => $m->code,
-                'client' => $m->client?->name,
-                'net' => $nets[$m->id],
+            ->map(fn (array $row) => [
+                'machine_id' => $row['machine']->id,
+                'code' => $row['machine']->code,
+                'client' => $row['machine']->client?->name,
+                'net' => $row['net'],
+                'weekly' => $row['weekly'],
             ])
             ->values()
             ->all();
 
-        return ['average' => $average, ...$counts, 'worst' => $worst];
+        return [
+            // Promedio semanal por máquina, como referencia para ajustar los montos.
+            'average' => $rows->isEmpty() ? 0.0 : round((float) $rows->avg('weekly'), 2),
+            ...$counts,
+            'thresholds' => $thresholds->toArray(),
+            'worst' => $worst,
+        ];
     }
 
     /**

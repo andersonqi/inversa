@@ -123,6 +123,16 @@ export type Machine = {
     recent_readings?: CollectionItem[];
 };
 
+/** Montos (Q por semana) para clasificar el rendimiento de las máquinas. */
+export type PerformanceThresholdsInfo = {
+    excellent: number;
+    poor: number;
+    excellent_presets: number[];
+    poor_presets: number[];
+};
+
+export type PerformanceLevel = 'excellent' | 'good' | 'poor';
+
 /** Cliente destino para mover máquinas. */
 export type MoveClient = IdName & { office_id: number };
 

@@ -9,6 +9,7 @@ use App\Models\CollectionRoute;
 use App\Models\Expense;
 use App\Models\Loan;
 use App\Models\LoanPayment;
+use App\Support\PerformanceThresholds;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -131,11 +132,16 @@ class ReportController extends Controller
             ->selectRaw('count(*) as machines, coalesce(sum(net), 0) as net')
             ->first();
 
+        // Semanas del período para expresar el neto como promedio semanal (mínimo una).
+        $days = (int) floor(CarbonImmutable::parse($from)->diffInDays(CarbonImmutable::parse($to))) + 1;
+
         return Inertia::render('reports/machines', [
             'filters' => ['from' => $from, 'to' => $to, 'office_id' => $officeId, 'only_losing' => $onlyLosing],
             'offices' => $this->officeOptions($user),
             'rows' => $base->orderBy('net')->orderBy('machines.code')->paginate(25)->withQueryString(),
             'summary' => ['machines' => (int) ($summary->machines ?? 0), 'net' => (float) ($summary->net ?? 0)],
+            'weeks' => round(max(1, $days / 7), 4),
+            'thresholds' => PerformanceThresholds::current()->toArray(),
         ]);
     }
 

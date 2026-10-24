@@ -4,6 +4,10 @@ import { Donut } from '@/components/app/donut';
 import { EmptyRow } from '@/components/app/empty-row';
 import { Panel } from '@/components/app/page';
 import {
+    PerformanceThresholdsEditor,
+    thresholdsSummary,
+} from '@/components/app/performance-thresholds';
+import {
     Table,
     TableBody,
     TableCell,
@@ -12,10 +16,11 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { useCan } from '@/hooks/use-can';
-import { date, money, signClass } from '@/lib/format';
+import { date, gtq, money, signClass } from '@/lib/format';
 import { WEEK_DAYS } from '@/lib/route-tools';
 import loans from '@/routes/loans';
 import machines from '@/routes/machines';
+import type { PerformanceThresholdsInfo } from '@/types';
 
 export type RouteStatsData = {
     week: { from: string; to: string };
@@ -34,15 +39,18 @@ export type RouteStatsData = {
         readings: number;
     }[];
     performance: {
+        /** Promedio semanal por máquina. */
         average: number;
         excellent: number;
         good: number;
         poor: number;
+        thresholds: PerformanceThresholdsInfo;
         worst: {
             machine_id: number;
             code: string;
             client: string | null;
             net: number;
+            weekly: number;
         }[];
     };
     arrears: {
@@ -176,7 +184,14 @@ export function RouteStats({ data }: { data: RouteStatsData }) {
                     </Table>
                 </Panel>
 
-                <Panel title="Rendimiento de máquinas · 30 días">
+                <Panel
+                    title="Rendimiento de máquinas · 30 días"
+                    actions={
+                        <PerformanceThresholdsEditor
+                            thresholds={performance.thresholds}
+                        />
+                    }
+                >
                     <div className="grid grid-cols-3 gap-2 p-4 text-center">
                         <Classification
                             label="Excelente"
@@ -195,9 +210,9 @@ export function RouteStats({ data }: { data: RouteStatsData }) {
                         />
                     </div>
                     <p className="px-4 pb-3 text-xs text-muted-foreground">
-                        Promedio por máquina: {money(performance.average)}.
-                        Excelente: 125 % o más del promedio · Insuficiente:
-                        menos del 50 % o sin ganancia.
+                        {thresholdsSummary(performance.thresholds)} Promedio
+                        actual por máquina: {gtq(performance.average)} por
+                        semana.
                     </p>
                     {performance.worst.length > 0 && (
                         <ul className="divide-y border-t text-sm">
@@ -216,9 +231,12 @@ export function RouteStats({ data }: { data: RouteStatsData }) {
                                         </span>
                                     </span>
                                     <span
-                                        className={`tabular-nums ${signClass(m.net)}`}
+                                        className={`text-right tabular-nums ${signClass(m.weekly)}`}
                                     >
-                                        {money(m.net)}
+                                        {money(m.weekly)}
+                                        <span className="block text-xs text-muted-foreground">
+                                            por semana
+                                        </span>
                                     </span>
                                 </li>
                             ))}

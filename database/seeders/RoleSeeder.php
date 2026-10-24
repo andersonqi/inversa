@@ -20,7 +20,7 @@ class RoleSeeder extends Seeder
         Role::updateOrCreate(['name' => 'Supervisor'], [
             'description' => 'Administra una oficina: rutas, clientes, máquinas, cortes, gastos y préstamos.',
             'scope' => RoleScope::Office,
-            'permissions' => array_values(array_diff(Permissions::all(), ['roles.view', 'roles.manage', 'offices.manage'])),
+            'permissions' => array_values(array_diff(Permissions::all(), ['roles.view', 'roles.manage', 'offices.manage', 'settings.manage'])),
         ]);
 
         Role::updateOrCreate(['name' => 'Cobrador'], [

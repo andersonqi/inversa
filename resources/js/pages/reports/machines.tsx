@@ -3,6 +3,12 @@ import { EmptyRow } from '@/components/app/empty-row';
 import { FilterBar, FilterField } from '@/components/app/filter-bar';
 import { Page, PageHeader, Panel } from '@/components/app/page';
 import { Pagination } from '@/components/app/pagination';
+import {
+    classifyWeekly,
+    PerformanceBadge,
+    PerformanceThresholdsEditor,
+    thresholdsSummary,
+} from '@/components/app/performance-thresholds';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import {
@@ -16,7 +22,7 @@ import {
 import { money, percent, signClass } from '@/lib/format';
 import machines from '@/routes/machines';
 import reports from '@/routes/reports';
-import type { IdName, Paginated } from '@/types';
+import type { IdName, Paginated, PerformanceThresholdsInfo } from '@/types';
 
 type Row = {
     id: number;
@@ -37,6 +43,8 @@ export default function MachinesReport({
     offices,
     rows: page,
     summary,
+    weeks,
+    thresholds,
 }: {
     filters: {
         from: string;
@@ -47,6 +55,8 @@ export default function MachinesReport({
     offices: IdName[];
     rows: Paginated<Row>;
     summary: { machines: number; net: number };
+    weeks: number;
+    thresholds: PerformanceThresholdsInfo;
 }) {
     return (
         <Page>
@@ -57,7 +67,15 @@ export default function MachinesReport({
                         ? 'Máquinas perdedoras'
                         : 'Rendimiento de máquinas'
                 }
-                description="Una máquina es perdedora cuando en el período pagó más de lo que recibió (retorno mayor a 100%)."
+                description={
+                    <>
+                        Una máquina es perdedora cuando en el período pagó más
+                        de lo que recibió (retorno mayor a 100%). La
+                        clasificación usa el neto promedio por semana del
+                        período. {thresholdsSummary(thresholds)}
+                    </>
+                }
+                actions={<PerformanceThresholdsEditor thresholds={thresholds} />}
             />
 
             <FilterBar url={reports.machines().url}>
@@ -111,11 +129,15 @@ export default function MachinesReport({
                                 Retorno
                             </TableHead>
                             <TableHead className="text-right">Neto</TableHead>
+                            <TableHead className="text-right">
+                                Por semana
+                            </TableHead>
+                            <TableHead>Clasificación</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {page.data.length === 0 && (
-                            <EmptyRow colSpan={7}>
+                            <EmptyRow colSpan={9}>
                                 Sin resultados en el período.
                             </EmptyRow>
                         )}
@@ -162,6 +184,11 @@ export default function MachinesReport({
                                 >
                                     {money(r.net)}
                                 </TableCell>
+                                <WeeklyCells
+                                    net={Number(r.net)}
+                                    weeks={weeks}
+                                    thresholds={thresholds}
+                                />
                             </TableRow>
                         ))}
                     </TableBody>
@@ -169,6 +196,31 @@ export default function MachinesReport({
                 <Pagination page={page} />
             </Panel>
         </Page>
+    );
+}
+
+function WeeklyCells({
+    net,
+    weeks,
+    thresholds,
+}: {
+    net: number;
+    weeks: number;
+    thresholds: PerformanceThresholdsInfo;
+}) {
+    const weekly = Math.round((net / weeks) * 100) / 100;
+
+    return (
+        <>
+            <TableCell
+                className={`text-right text-xs tabular-nums ${signClass(weekly)}`}
+            >
+                {money(weekly)}
+            </TableCell>
+            <TableCell>
+                <PerformanceBadge level={classifyWeekly(weekly, thresholds)} />
+            </TableCell>
+        </>
     );
 }
 

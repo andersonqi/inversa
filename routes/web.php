@@ -12,6 +12,7 @@ use App\Http\Controllers\LoanPaymentController;
 use App\Http\Controllers\MachineController;
 use App\Http\Controllers\MachineMovementController;
 use App\Http\Controllers\OfficeController;
+use App\Http\Controllers\PerformanceSettingsController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
@@ -23,6 +24,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
 
     Route::post('exchange-rate/refresh', [ExchangeRateController::class, 'refresh'])->name('exchange.refresh')->middleware('throttle:6,1');
+
+    Route::put('parameters/performance', [PerformanceSettingsController::class, 'update'])->name('parameters.performance')->middleware('can:settings.manage');
 
     // Recursos con permisos "{modulo}.view" para lectura y "{modulo}.manage" para escritura.
     $resources = [

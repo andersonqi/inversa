@@ -52,6 +52,9 @@ class Permissions
         'Reportes' => [
             'reports.view' => 'Ver reportes',
         ],
+        'Configuración' => [
+            'settings.manage' => 'Configurar parámetros (montos de rendimiento de máquinas)',
+        ],
     ];
 
     /**
