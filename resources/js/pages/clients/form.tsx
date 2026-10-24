@@ -2,10 +2,12 @@ import { Form, Head, Link } from '@inertiajs/react';
 import { CheckboxField } from '@/components/app/checkbox-field';
 import { Field, FormGrid } from '@/components/app/field';
 import { Page, PageHeader, Panel } from '@/components/app/page';
+import { PhotoField } from '@/components/app/photo-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
+import { photoUrl } from '@/lib/image';
 import { WEEK_DAYS } from '@/lib/route-tools';
 import clients from '@/routes/clients';
 import type { Client, IdName } from '@/types';
@@ -213,6 +215,40 @@ export default function ClientForm({
                                         defaultValue={client?.notes ?? ''}
                                     />
                                 </Field>
+                                <PhotoField
+                                    name="photo"
+                                    label="Foto del cliente"
+                                    hint="Opcional. Ayuda a reconocer al encargado."
+                                    error={errors.photo}
+                                    currentUrl={
+                                        client
+                                            ? photoUrl(
+                                                  clients.photo({
+                                                      client: client.id,
+                                                      kind: 'client',
+                                                  }).url,
+                                                  client.photo_path,
+                                              )
+                                            : null
+                                    }
+                                />
+                                <PhotoField
+                                    name="business_photo"
+                                    label="Foto del negocio"
+                                    hint="Opcional. Fachada del local para ubicarlo en ruta."
+                                    error={errors.business_photo}
+                                    currentUrl={
+                                        client
+                                            ? photoUrl(
+                                                  clients.photo({
+                                                      client: client.id,
+                                                      kind: 'business',
+                                                  }).url,
+                                                  client.business_photo_path,
+                                              )
+                                            : null
+                                    }
+                                />
                             </FormGrid>
                             <CheckboxField
                                 name="is_active"

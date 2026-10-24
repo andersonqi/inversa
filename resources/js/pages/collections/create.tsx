@@ -28,6 +28,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useOnline } from '@/hooks/use-online';
 import { date, money, num, percent, signClass } from '@/lib/format';
+import { compressImage } from '@/lib/image';
 import { offlineSupported } from '@/lib/offline-store';
 import type { QueuedCollection } from '@/lib/offline-store';
 import { queueCollection } from '@/lib/offline-sync';
@@ -69,33 +70,6 @@ function exceedsCashTolerance(theoretical: number, cash: number | null) {
     }
 
     return difference > Math.round(base * CASH_TOLERANCE * 100) / 100;
-}
-
-/** Reduce la foto del contador (máx. 1600 px, JPEG) para subirla rápido en ruta. */
-async function compressImage(file: File): Promise<File> {
-    try {
-        const bitmap = await createImageBitmap(file);
-        const scale = Math.min(
-            1,
-            1600 / Math.max(bitmap.width, bitmap.height),
-        );
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(bitmap.width * scale);
-        canvas.height = Math.round(bitmap.height * scale);
-        canvas
-            .getContext('2d')
-            ?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-
-        const blob = await new Promise<Blob | null>((resolve) =>
-            canvas.toBlob(resolve, 'image/jpeg', 0.75),
-        );
-
-        return blob
-            ? new File([blob], 'contador.jpg', { type: 'image/jpeg' })
-            : file;
-    } catch {
-        return file;
-    }
 }
 
 export default function CollectionCreate({
@@ -957,7 +931,7 @@ function PhotoInput({
         }
 
         setBusy(true);
-        const compressed = await compressImage(selected);
+        const compressed = await compressImage(selected, 'contador.jpg');
         onChange(compressed);
 
         const reader = new FileReader();

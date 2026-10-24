@@ -29,6 +29,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $installed_at
  * @property MachineStatus $status
  * @property string|null $notes
+ * @property string|null $photo_path Foto de la máquina (disco privado).
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */

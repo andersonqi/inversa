@@ -6,15 +6,25 @@ use App\Enums\MachineStatus;
 use App\Models\Client;
 use App\Models\Machine;
 use App\Services\MachineMovementService;
+use App\Services\PhotoStorage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class MachineController extends Controller
 {
+    /**
+     * Foto de la máquina: columna => campo del formulario.
+     */
+    private const PHOTO_FIELDS = ['photo_path' => 'photo'];
+
+    public function __construct(private PhotoStorage $photos) {}
+
     public function index(Request $request): Response
     {
         $machines = Machine::query()
@@ -63,6 +73,13 @@ class MachineController extends Controller
         ]);
     }
 
+    public function photo(Request $request, Machine $machine): StreamedResponse
+    {
+        $this->ensureVisible($request, $machine);
+
+        return $this->photos->response($machine->photo_path);
+    }
+
     public function create(Request $request): Response
     {
         return Inertia::render('machines/form', $this->formProps($request, null));
@@ -71,6 +88,8 @@ class MachineController extends Controller
     public function store(Request $request, MachineMovementService $movements): RedirectResponse
     {
         $machine = Machine::create($this->validated($request));
+
+        $this->photos->sync($machine, $request, self::PHOTO_FIELDS, "machines/{$machine->id}");
 
         $movements->logFormChange($request->user(), $machine, null, null);
 
@@ -95,6 +114,8 @@ class MachineController extends Controller
 
         $machine->update($this->validated($request, $machine));
 
+        $this->photos->sync($machine, $request, self::PHOTO_FIELDS, "machines/{$machine->id}");
+
         $movements->logFormChange($request->user(), $machine, $previousClientId, $previousStatus);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Máquina actualizada.']);
@@ -113,6 +134,8 @@ class MachineController extends Controller
         }
 
         $machine->delete();
+
+        $this->photos->deleteDirectory("machines/{$machine->id}");
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Máquina eliminada.']);
 
@@ -162,9 +185,17 @@ class MachineController extends Controller
             'installed_at' => ['nullable', 'date'],
             'status' => ['required', Rule::enum(MachineStatus::class)],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'photo' => PhotoStorage::rules(),
+            'remove_photo' => ['sometimes', 'boolean'],
         ], [
             'client_id.required_if' => 'Seleccione el cliente donde se instala la máquina.',
+            ...PhotoStorage::messages(['photo']),
+        ], [
+            'photo' => 'foto de la máquina',
         ]);
+
+        // La foto se guarda aparte (PhotoStorage::sync).
+        $data = Arr::except($data, ['photo', 'remove_photo']);
 
         $this->ensureOfficeAllowed($request->user(), $data['office_id']);
 

@@ -56,7 +56,7 @@ class Permissions
             'notifications.send' => 'Enviar notificaciones a cobradores',
         ],
         'Configuración' => [
-            'settings.manage' => 'Configurar parámetros (montos de rendimiento, logo y color de la empresa)',
+            'settings.manage' => 'Configurar parámetros (montos de rendimiento, logo y color de la empresa, días que se guardan las fotos de contadores)',
         ],
     ];
 

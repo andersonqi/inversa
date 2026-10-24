@@ -4,14 +4,27 @@ namespace App\Http\Controllers;
 
 use App\Enums\MachineStatus;
 use App\Models\Client;
+use App\Services\PhotoStorage;
 use Carbon\CarbonInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ClientController extends Controller
 {
+    /**
+     * Fotos del cliente: columna => campo del formulario.
+     */
+    private const PHOTO_FIELDS = [
+        'photo_path' => 'photo',
+        'business_photo_path' => 'business_photo',
+    ];
+
+    public function __construct(private PhotoStorage $photos) {}
+
     /**
      * Vista de ruta: tarjetas por cliente con el estado de cobro del ciclo (semana actual,
      * lunes a domingo) y filtro por día de visita.
@@ -82,6 +95,16 @@ class ClientController extends Controller
         return back();
     }
 
+    /**
+     * Foto del cliente ("client") o de su negocio ("business").
+     */
+    public function photo(Request $request, Client $client, string $kind): StreamedResponse
+    {
+        $this->ensureVisible($request, $client);
+
+        return $this->photos->response($kind === 'business' ? $client->business_photo_path : $client->photo_path);
+    }
+
     public function show(Request $request, Client $client): Response
     {
         $this->ensureVisible($request, $client);
@@ -117,6 +140,8 @@ class ClientController extends Controller
     {
         $client = Client::create($this->validated($request));
 
+        $this->photos->sync($client, $request, self::PHOTO_FIELDS, "clients/{$client->id}");
+
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Cliente creado.']);
 
         return to_route('clients.show', $client);
@@ -138,6 +163,8 @@ class ClientController extends Controller
 
         $client->update($this->validated($request));
 
+        $this->photos->sync($client, $request, self::PHOTO_FIELDS, "clients/{$client->id}");
+
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Cliente actualizado.']);
 
         return to_route('clients.show', $client);
@@ -154,6 +181,8 @@ class ClientController extends Controller
         }
 
         $client->delete();
+
+        $this->photos->deleteDirectory("clients/{$client->id}");
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Cliente eliminado.']);
 
@@ -179,11 +208,19 @@ class ClientController extends Controller
             'visit_day' => ['nullable', 'integer', 'between:1,7'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'is_active' => ['boolean'],
+            'photo' => PhotoStorage::rules(),
+            'business_photo' => PhotoStorage::rules(),
+            'remove_photo' => ['sometimes', 'boolean'],
+            'remove_business_photo' => ['sometimes', 'boolean'],
+        ], PhotoStorage::messages(array_values(self::PHOTO_FIELDS)), [
+            'photo' => 'foto del cliente',
+            'business_photo' => 'foto del negocio',
         ]);
 
         $this->ensureRouteAllowed($request->user(), $data['collection_route_id']);
         $data['visit_order'] ??= 0;
 
-        return $data;
+        // Las fotos se guardan aparte (PhotoStorage::sync).
+        return Arr::except($data, ['photo', 'business_photo', 'remove_photo', 'remove_business_photo']);
     }
 }

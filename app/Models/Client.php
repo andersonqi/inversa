@@ -30,6 +30,8 @@ use Illuminate\Support\Carbon;
  * @property int $visit_order
  * @property int|null $visit_day Día de visita ISO (1 = lunes … 7 = domingo).
  * @property string|null $notes
+ * @property string|null $photo_path Foto del cliente (disco privado).
+ * @property string|null $business_photo_path Foto del negocio (disco privado).
  * @property bool $is_active
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at

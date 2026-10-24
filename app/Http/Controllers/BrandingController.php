@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\Branding;
+use App\Support\PhotoRetention;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,6 +24,7 @@ class BrandingController extends Controller
             'color' => Branding::companyColor(),
             'defaultColor' => Branding::DEFAULT_COLOR,
             'logoUrl' => Branding::logoUrl(),
+            'photoRetention' => PhotoRetention::current()->toArray(),
         ]);
     }
 

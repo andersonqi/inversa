@@ -15,6 +15,7 @@ use App\Http\Controllers\MachineMovementController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OfficeController;
 use App\Http\Controllers\PerformanceSettingsController;
+use App\Http\Controllers\PhotoSettingsController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
@@ -25,12 +26,33 @@ Route::redirect('/', '/dashboard')->name('home');
 // Logo de la empresa: público porque también se muestra en la pantalla de ingreso.
 Route::get('branding/logo', [BrandingController::class, 'logo'])->name('branding.logo');
 
+// Verificación del dominio para la app de Android (TWA): sin ella el APK muestra la
+// barra de direcciones del navegador. Vacío mientras no se configure el paquete.
+Route::get('.well-known/assetlinks.json', function () {
+    $package = config('services.android.package');
+    $fingerprints = config('services.android.sha256_fingerprints');
+
+    if (! is_string($package) || $package === '' || ! is_array($fingerprints) || $fingerprints === []) {
+        return response()->json([]);
+    }
+
+    return response()->json([[
+        'relation' => ['delegate_permission/common.handle_all_urls'],
+        'target' => [
+            'namespace' => 'android_app',
+            'package_name' => $package,
+            'sha256_cert_fingerprints' => array_values($fingerprints),
+        ],
+    ]]);
+})->name('well-known.assetlinks');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
 
     Route::post('exchange-rate/refresh', [ExchangeRateController::class, 'refresh'])->name('exchange.refresh')->middleware('throttle:6,1');
 
     Route::put('parameters/performance', [PerformanceSettingsController::class, 'update'])->name('parameters.performance')->middleware('can:settings.manage');
+    Route::put('parameters/photos', [PhotoSettingsController::class, 'update'])->name('parameters.photos')->middleware('can:settings.manage');
 
     // Identidad de la empresa: logo y color.
     Route::middleware('can:settings.manage')->group(function () {
@@ -80,6 +102,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Ubicación del negocio tomada en campo (quien edita clientes o registra cortes).
     Route::post('clients/{client}/location', [ClientController::class, 'updateLocation'])->name('clients.location')->middleware('can:clients.view');
+
+    // Fotos privadas del cliente, del negocio y de la máquina.
+    Route::get('clients/{client}/photos/{kind}', [ClientController::class, 'photo'])->name('clients.photo')->whereIn('kind', ['client', 'business'])->middleware('can:clients.view');
+    Route::get('machines/{machine}/photo', [MachineController::class, 'photo'])->name('machines.photo')->middleware('can:machines.view');
 
     // Modo sin conexión (antes de "collections/{collection}" para no confundirse con un id).
     Route::middleware('can:collections.create')->controller(CollectionSyncController::class)->group(function () {

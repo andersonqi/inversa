@@ -6,6 +6,7 @@ import { EmptyRow } from '@/components/app/empty-row';
 import { MachineMoveActions } from '@/components/app/machine-move-actions';
 import { Page, PageHeader, Panel } from '@/components/app/page';
 import { Pagination } from '@/components/app/pagination';
+import { PhotoCard } from '@/components/app/photo-field';
 import { StatCard } from '@/components/app/stat-card';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,6 +19,8 @@ import {
 } from '@/components/ui/table';
 import { useCan } from '@/hooks/use-can';
 import { date, money, num, signClass } from '@/lib/format';
+import { photoUrl } from '@/lib/image';
+import { cn } from '@/lib/utils';
 import clients from '@/routes/clients';
 import collections from '@/routes/collections';
 import machines from '@/routes/machines';
@@ -54,6 +57,10 @@ export default function MachineShow({
     moveClients: MoveClient[];
 }) {
     const can = useCan();
+    const photo = photoUrl(
+        machines.photo(machine.id).url,
+        machine.photo_path ?? null,
+    );
     const payout =
         Number(totals.amount_in) > 0
             ? (Number(totals.amount_out) / Number(totals.amount_in)) * 100
@@ -120,27 +127,46 @@ export default function MachineShow({
                 }
             />
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <StatCard
-                    label="Contadores actuales"
-                    value={`${num(machine.counter_in)} / ${num(machine.counter_out)}`}
-                    hint={`Entrada / salida · crédito ${money(machine.credit_value)}`}
-                />
-                <StatCard
-                    label="Total jugado"
-                    value={money(totals.amount_in)}
-                    hint={`${totals.readings} cortes`}
-                />
-                <StatCard
-                    label="Total pagado"
-                    value={money(totals.amount_out)}
-                    hint={`Retorno ${payout.toFixed(1)}%`}
-                />
-                <StatCard
-                    label="Ganancia neta histórica"
-                    value={money(totals.net)}
-                    tone={Number(totals.net) < 0 ? 'negative' : 'positive'}
-                />
+            <div
+                className={cn(
+                    'grid gap-4',
+                    photo && 'md:grid-cols-[14rem_minmax(0,1fr)]',
+                )}
+            >
+                {photo && (
+                    <PhotoCard
+                        src={photo}
+                        label={`Foto de la máquina ${machine.code}`}
+                        className="max-w-sm self-start"
+                    />
+                )}
+                <div
+                    className={cn(
+                        'grid content-start gap-4 sm:grid-cols-2',
+                        photo ? 'xl:grid-cols-4' : 'lg:grid-cols-4',
+                    )}
+                >
+                    <StatCard
+                        label="Contadores actuales"
+                        value={`${num(machine.counter_in)} / ${num(machine.counter_out)}`}
+                        hint={`Entrada / salida · crédito ${money(machine.credit_value)}`}
+                    />
+                    <StatCard
+                        label="Total jugado"
+                        value={money(totals.amount_in)}
+                        hint={`${totals.readings} cortes`}
+                    />
+                    <StatCard
+                        label="Total pagado"
+                        value={money(totals.amount_out)}
+                        hint={`Retorno ${payout.toFixed(1)}%`}
+                    />
+                    <StatCard
+                        label="Ganancia neta histórica"
+                        value={money(totals.net)}
+                        tone={Number(totals.net) < 0 ? 'negative' : 'positive'}
+                    />
+                </div>
             </div>
 
             <Panel title="Historial de lecturas">

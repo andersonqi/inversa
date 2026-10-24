@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import { useCan } from '@/hooks/use-can';
 import { money, num } from '@/lib/format';
+import { photoUrl } from '@/lib/image';
 import { dayLabel, googleMapsUrl, wazeUrl } from '@/lib/route-tools';
 import { cn } from '@/lib/utils';
 import clients from '@/routes/clients';
@@ -321,6 +322,10 @@ function LocationAction({ client }: { client: Client }) {
     const google = googleMapsUrl(client);
     const waze = wazeUrl(client);
     const canUpdate = can('clients.manage') || can('collections.create');
+    const businessPhoto = photoUrl(
+        clients.photo({ client: client.id, kind: 'business' }).url,
+        client.business_photo_path,
+    );
 
     const saveCurrent = () => {
         if (!('geolocation' in navigator)) {
@@ -370,6 +375,14 @@ function LocationAction({ client }: { client: Client }) {
                           ? `Sin coordenada guardada. Dirección: ${client.address}`
                           : 'Sin coordenada ni dirección guardada.'}
                 </DialogDescription>
+                {businessPhoto && (
+                    <img
+                        src={businessPhoto}
+                        alt={`Foto del negocio de ${client.name}`}
+                        loading="lazy"
+                        className="max-h-64 w-full rounded-lg border object-cover"
+                    />
+                )}
                 <div className="grid gap-2 sm:grid-cols-2">
                     {google && (
                         <Button variant="outline" asChild>

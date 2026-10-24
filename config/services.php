@@ -35,6 +35,17 @@ return [
         'max_age_minutes' => (int) env('EXCHANGE_RATE_MAX_AGE_MINUTES', 60),
     ],
 
+    // App de Android (APK / Play Store) que abre el sistema a pantalla completa (TWA).
+    // Se publica en /.well-known/assetlinks.json para que Android confíe en el dominio.
+    'android' => [
+        'package' => env('ANDROID_PACKAGE_NAME'),
+        // Huellas SHA-256 del certificado de firma, separadas por coma.
+        'sha256_fingerprints' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('ANDROID_SHA256_FINGERPRINTS', '')),
+        ))),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

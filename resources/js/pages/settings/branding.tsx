@@ -6,16 +6,29 @@ import { ColorPicker, ThemePreview } from '@/components/color-picker';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 import { edit as editBranding, update } from '@/routes/branding';
+import parameters from '@/routes/parameters';
+
+type PhotoRetentionInfo = {
+    days: number;
+    presets: number[];
+    min: number;
+    max: number;
+};
 
 export default function Branding({
     color,
     defaultColor,
     logoUrl,
+    photoRetention,
 }: {
     color: string;
     defaultColor: string;
     logoUrl: string | null;
+    photoRetention: PhotoRetentionInfo;
 }) {
     const inputRef = useRef<HTMLInputElement>(null);
     const [preview, setPreview] = useState<string | null>(null);
@@ -159,7 +172,77 @@ export default function Branding({
                     {form.processing ? 'Guardando…' : 'Guardar identidad'}
                 </Button>
             </form>
+
+            <PhotoRetentionForm retention={photoRetention} />
         </>
+    );
+}
+
+/** Días que se guardan las fotos de contadores antes de eliminarse solas. */
+function PhotoRetentionForm({ retention }: { retention: PhotoRetentionInfo }) {
+    const form = useForm({ days: String(retention.days) });
+    const days = Number(form.data.days);
+
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        form.put(parameters.photos().url, { preserveScroll: true });
+    };
+
+    return (
+        <form onSubmit={submit} className="space-y-6">
+            <Heading
+                variant="small"
+                title="Fotos de contadores"
+                description="Las fotos que se toman de los contadores al registrar un corte se eliminan solas pasado este plazo (contado desde la fecha del corte) para no llenar el servidor. El corte, sus lecturas y la firma se conservan. Las fotos de clientes, negocios y máquinas no se eliminan."
+            />
+            <div className="flex flex-wrap gap-1.5">
+                {retention.presets.map((preset) => {
+                    const selected = days === preset;
+
+                    return (
+                        <button
+                            key={preset}
+                            type="button"
+                            aria-pressed={selected}
+                            onClick={() => form.setData('days', String(preset))}
+                            className={cn(
+                                'rounded-full border px-3 py-1 text-xs font-medium tabular-nums transition-colors',
+                                selected
+                                    ? 'border-primary bg-primary text-primary-foreground'
+                                    : 'hover:bg-muted',
+                            )}
+                        >
+                            {preset} días
+                        </button>
+                    );
+                })}
+            </div>
+            <div className="grid max-w-48 gap-2">
+                <Label htmlFor="photo_days">Otro plazo (días)</Label>
+                <Input
+                    id="photo_days"
+                    type="number"
+                    inputMode="numeric"
+                    min={retention.min}
+                    max={retention.max}
+                    step={1}
+                    value={form.data.days}
+                    onChange={(e) => form.setData('days', e.target.value)}
+                    required
+                />
+            </div>
+            <InputError message={form.errors.days} />
+            <Button
+                disabled={
+                    form.processing ||
+                    !Number.isInteger(days) ||
+                    days < retention.min ||
+                    days > retention.max
+                }
+            >
+                {form.processing ? 'Guardando…' : 'Guardar plazo'}
+            </Button>
+        </form>
     );
 }
 

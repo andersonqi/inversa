@@ -10,6 +10,7 @@ import { EmptyRow } from '@/components/app/empty-row';
 import { MachineMoveActions } from '@/components/app/machine-move-actions';
 import { Page, PageHeader, Panel } from '@/components/app/page';
 import { Pagination } from '@/components/app/pagination';
+import { PhotoCard } from '@/components/app/photo-field';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -21,6 +22,7 @@ import {
 } from '@/components/ui/table';
 import { useCan } from '@/hooks/use-can';
 import { date, money, num, percent, signClass } from '@/lib/format';
+import { photoUrl } from '@/lib/image';
 import { dayLabel } from '@/lib/route-tools';
 import clients from '@/routes/clients';
 import collections from '@/routes/collections';
@@ -40,6 +42,22 @@ export default function ClientShow({
     const can = useCan();
     const canMove = can('machines.move');
     const route = client.collection_route;
+    const photos = [
+        {
+            label: 'Foto del negocio',
+            src: photoUrl(
+                clients.photo({ client: client.id, kind: 'business' }).url,
+                client.business_photo_path,
+            ),
+        },
+        {
+            label: 'Foto del cliente',
+            src: photoUrl(
+                clients.photo({ client: client.id, kind: 'client' }).url,
+                client.photo_path,
+            ),
+        },
+    ].filter((p): p is { label: string; src: string } => p.src !== null);
 
     return (
         <Page>
@@ -110,6 +128,14 @@ export default function ClientShow({
                     </>
                 }
             />
+
+            {photos.length > 0 && (
+                <div className="grid max-w-2xl grid-cols-2 gap-4">
+                    {photos.map((p) => (
+                        <PhotoCard key={p.label} src={p.src} label={p.label} />
+                    ))}
+                </div>
+            )}
 
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-6">
                 <Info

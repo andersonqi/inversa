@@ -75,6 +75,10 @@ export type Client = {
     /** Día de visita ISO: 1 = lunes … 7 = domingo. */
     visit_day: number | null;
     notes: string | null;
+    /** Foto del cliente (se ve con la ruta clients.photo, kind "client"). */
+    photo_path: string | null;
+    /** Foto del negocio (ruta clients.photo, kind "business"). */
+    business_photo_path: string | null;
     is_active: boolean;
     machines_count?: number;
     installed_machines_count?: number;
@@ -115,6 +119,8 @@ export type Machine = {
     installed_at: string | null;
     status: MachineStatus;
     notes: string | null;
+    /** Foto de la máquina (ruta machines.photo). Opcional en listados reducidos. */
+    photo_path?: string | null;
     office?: IdName;
     client?:
         | (IdName & { collection_route?: { id: number; code: string } })

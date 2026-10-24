@@ -1,10 +1,14 @@
 {
+    "id": "/dashboard",
     "name": "Inversa Guatemala",
     "short_name": "Inversa",
+    "description": "Rutas de cobro, cortes, máquinas, préstamos y reportes de Inversa Guatemala.",
     "lang": "es",
+    "dir": "ltr",
     "start_url": "/dashboard",
     "scope": "/",
     "display": "standalone",
+    "categories": ["business", "finance"],
     "background_color": "#0b332c",
     "theme_color": "#0b332c",
     "icons": [

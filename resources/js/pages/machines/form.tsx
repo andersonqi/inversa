@@ -2,10 +2,12 @@ import { Form, Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
 import { Field, FormGrid } from '@/components/app/field';
 import { Page, PageHeader, Panel } from '@/components/app/page';
+import { PhotoField } from '@/components/app/photo-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
+import { photoUrl } from '@/lib/image';
 import machines from '@/routes/machines';
 import type { IdName, Machine, Option } from '@/types';
 
@@ -336,6 +338,21 @@ export default function MachineForm({
                                     />
                                 )}
                             </fieldset>
+
+                            <PhotoField
+                                name="photo"
+                                label="Foto de la máquina"
+                                hint="Opcional. Ayuda a identificar el equipo y su estado."
+                                error={errors.photo}
+                                currentUrl={
+                                    machine
+                                        ? photoUrl(
+                                              machines.photo(machine.id).url,
+                                              machine.photo_path ?? null,
+                                          )
+                                        : null
+                                }
+                            />
 
                             <Field
                                 label="Notas"
