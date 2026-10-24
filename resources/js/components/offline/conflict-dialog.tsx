@@ -1,3 +1,4 @@
+import { router } from '@inertiajs/react';
 import { TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -73,8 +74,16 @@ export function ConflictDialog({
         setBusy(false);
 
         if (outcome.status === 'created') {
+            const receipt = outcome.receipt_url;
             toast.success(
                 'Se anuló el corte registrado y se guardó el corte sin conexión.',
+                {
+                    action: {
+                        label: 'Ver recibo',
+                        onClick: () => router.visit(receipt),
+                    },
+                    duration: 10_000,
+                },
             );
             close();
         } else if (outcome.status === 'conflict') {

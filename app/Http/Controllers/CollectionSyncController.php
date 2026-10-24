@@ -76,7 +76,8 @@ class CollectionSyncController extends Controller
         return response()->json([
             'status' => $result['status'],
             'collection_id' => $collection->id,
-            'receipt_url' => route('collections.receipt', $collection),
+            // Ruta relativa: el teléfono navega a ella sin depender de APP_URL.
+            'receipt_url' => route('collections.receipt', $collection, false),
         ], $result['status'] === 'created' ? 201 : 200);
     }
 }

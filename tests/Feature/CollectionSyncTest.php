@@ -77,6 +77,10 @@ class CollectionSyncTest extends TestCase
             ->assertJsonPath('status', 'created');
 
         $collection = Collection::where('offline_id', $payload['offline_id'])->firstOrFail();
+
+        $this->actingAs($this->collector)
+            ->postJson(route('collections.sync'), $payload)
+            ->assertJsonPath('receipt_url', "/collections/{$collection->id}/receipt");
         $this->assertSame($this->collector->id, $collection->user_id);
         // (80 − 40) créditos × ₡100.
         $this->assertSame('4000.00', $collection->net);

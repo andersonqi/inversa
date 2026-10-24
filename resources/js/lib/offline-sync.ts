@@ -24,6 +24,8 @@ export type SyncOutcome =
 
 export type SyncReport = {
     created: number;
+    /** Recibos de los cortes sincronizados, con el cliente de cada uno. */
+    receipts: { url: string; client: string }[];
     conflicts: number;
     errors: number;
     stopped: string | null;
@@ -197,6 +199,7 @@ export function syncQueue(userId: number): Promise<SyncReport> {
     running ??= (async () => {
         const report: SyncReport = {
             created: 0,
+            receipts: [],
             conflicts: 0,
             errors: 0,
             stopped: null,
@@ -215,6 +218,13 @@ export function syncQueue(userId: number): Promise<SyncReport> {
                 if (outcome.status === 'retry') {
                     report.stopped = outcome.message;
                     break;
+                }
+
+                if (outcome.status === 'created') {
+                    report.receipts.push({
+                        url: outcome.receipt_url,
+                        client: item.client_name,
+                    });
                 }
 
                 report[

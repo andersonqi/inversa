@@ -1,4 +1,4 @@
-import { Link, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { CloudUpload, TriangleAlert, WifiOff } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -16,6 +16,7 @@ import {
     syncQueue,
 } from '@/lib/offline-sync';
 import { offline } from '@/routes';
+import collections from '@/routes/collections';
 
 /** Evento para abrir el diálogo de conflicto de un corte de la cola (detail = id). */
 export const RESOLVE_EVENT = 'offline-resolve';
@@ -26,10 +27,27 @@ export function openConflict(id: string): void {
 
 function announce(report: SyncReport, manual: boolean) {
     if (report.created > 0) {
+        const [first] = report.receipts;
+
         toast.success(
             report.created === 1
-                ? 'Se sincronizó 1 corte guardado sin conexión.'
+                ? `Se sincronizó el corte de ${first?.client ?? 'un cliente'} guardado sin conexión.`
                 : `Se sincronizaron ${report.created} cortes guardados sin conexión.`,
+            {
+                // Acceso directo al recibo para imprimirlo o enviarlo por WhatsApp.
+                action:
+                    report.created === 1 && first
+                        ? {
+                              label: 'Ver recibo',
+                              onClick: () => router.visit(first.url),
+                          }
+                        : {
+                              label: 'Ver cortes',
+                              onClick: () =>
+                                  router.visit(collections.index().url),
+                          },
+                duration: 10_000,
+            },
         );
     }
 

@@ -1,10 +1,28 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { ArrowLeft, MessageCircle, Printer } from 'lucide-react';
-import { useState } from 'react';
+import {
+    ArrowLeft,
+    Download,
+    FileText,
+    Image as ImageIcon,
+    MessageCircle,
+    Printer,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 // El recibo es un comprobante: siempre en quetzales, sin importar la moneda elegida.
 import { date, gtq as money, num, percent } from '@/lib/format';
+import type { PaperWidth } from '@/lib/receipt-file';
+import {
+    buildReceiptFiles,
+    downloadFile,
+    receiptCaption,
+    receiptNumber,
+    receiptText,
+    receiptTime as time,
+    shareFile,
+} from '@/lib/receipt-file';
 import { whatsappUrl } from '@/lib/route-tools';
 import { cn } from '@/lib/utils';
 import clients from '@/routes/clients';
@@ -12,7 +30,8 @@ import collections from '@/routes/collections';
 import type { Collection } from '@/types';
 
 type Copy = 'cliente' | 'empresa';
-type Width = 58 | 80;
+type Width = PaperWidth;
+type FileFormat = 'image' | 'pdf';
 
 const WIDTH_KEY = 'receipt-width';
 
@@ -22,59 +41,6 @@ function storedWidth(): Width {
     }
 
     return window.localStorage.getItem(WIDTH_KEY) === '80' ? 80 : 58;
-}
-
-function time(value: string): string {
-    return new Date(value).toLocaleTimeString('es-GT', {
-        hour: '2-digit',
-        minute: '2-digit',
-    });
-}
-
-function receiptNumber(id: number): string {
-    return String(id).padStart(6, '0');
-}
-
-/** Recibo en texto plano para compartir por WhatsApp. */
-function receiptText(
-    company: string,
-    c: Collection,
-    loansBalance: number,
-): string {
-    const lines = [
-        `*${company}*`,
-        `Recibo de corte #${receiptNumber(c.id)}`,
-        `Fecha: ${date(c.collected_on)} ${time(c.created_at)}`,
-        `Tienda: ${c.client?.business_name || c.client?.name}`,
-        '',
-        '*Máquinas*',
-        ...(c.items ?? []).map(
-            (item) =>
-                `• ${item.machine?.code}: In ${num(item.current_in - item.previous_in)} / Out ${num(item.current_out - item.previous_out)} / Neto ${money(item.net)}`,
-        ),
-        '',
-        `Total máquinas: ${money(c.net)}`,
-        `Total cliente (${percent(c.commission_percent)}): ${money(c.client_share)}`,
-    ];
-
-    if (Number(c.loss_offset) > 0) {
-        lines.push(`Rebaja pérdida pendiente: -${money(c.loss_offset)}`);
-    }
-
-    if (Number(c.loan_deduction) > 0) {
-        lines.push(`Abono a préstamo: -${money(c.loan_deduction)}`);
-    }
-
-    lines.push(
-        `*Efectivo entregado al cliente: ${money(c.client_paid)}*`,
-        `Total empresa: ${money(c.company_share)}`,
-    );
-
-    if (loansBalance > 0) {
-        lines.push(`Saldo pendiente de préstamos: ${money(loansBalance)}`);
-    }
-
-    return lines.join('\n');
 }
 
 export default function CollectionReceipt({
@@ -97,6 +63,67 @@ export default function CollectionReceipt({
         // Se renderiza la copia elegida antes de abrir el diálogo de impresión.
         flushSync(() => setCopy(value));
         window.print();
+    };
+
+    // El ticket como imagen y PDF se prepara de antemano: el menú "Compartir" del
+    // teléfono debe abrirse en el mismo toque del botón.
+    const signatureUrl = c.signature_path
+        ? collections.signature(c.id).url
+        : null;
+    const [format, setFormat] = useState<FileFormat>('image');
+    const [files, setFiles] = useState<{
+        width: Width;
+        image: File;
+        pdf: File;
+    } | null>(null);
+    const [failed, setFailed] = useState(false);
+    const ready = files?.width === width ? files : null;
+    const caption = receiptCaption(company, c);
+
+    useEffect(() => {
+        let active = true;
+
+        buildReceiptFiles(company, c, loansBalance, width, signatureUrl)
+            .then((built) => {
+                if (active) {
+                    setFiles({ width, ...built });
+                }
+            })
+            .catch(() => {
+                if (active) {
+                    setFailed(true);
+                }
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [company, c, loansBalance, width, signatureUrl]);
+
+    const shareTicket = async () => {
+        if (!ready) {
+            return;
+        }
+
+        const file = format === 'pdf' ? ready.pdf : ready.image;
+        const result = await shareFile(file, caption);
+
+        if (result === 'unsupported') {
+            // Computadoras y navegadores sin "Compartir archivos": se descarga y se
+            // abre el chat para adjuntarlo.
+            downloadFile(file);
+            window.open(
+                whatsappUrl(
+                    c.client?.phone,
+                    `${caption}\n\n(Adjunto: ${file.name})`,
+                ),
+                '_blank',
+                'noopener',
+            );
+            toast.info(
+                'Este navegador no permite adjuntar archivos directamente: el ticket se descargó, adjúntelo en el chat de WhatsApp.',
+            );
+        }
     };
 
     const items = c.items ?? [];
@@ -131,18 +158,58 @@ export default function CollectionReceipt({
                         </Button>
                     ))}
                 </div>
-                <div className="grid gap-2 sm:grid-cols-3">
+                <div className="grid gap-2 sm:grid-cols-2">
                     <Button onClick={() => print('cliente')}>
                         <Printer /> Imprimir para cliente
                     </Button>
                     <Button variant="outline" onClick={() => print('empresa')}>
                         <Printer /> Imprimir para empresa
                     </Button>
+                </div>
+
+                <section className="space-y-2 rounded-lg border bg-background p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-medium">
+                            Enviar ticket por WhatsApp
+                        </p>
+                        <div
+                            className="flex gap-1"
+                            role="group"
+                            aria-label="Formato del ticket"
+                        >
+                            <Button
+                                size="sm"
+                                variant={
+                                    format === 'image' ? 'default' : 'outline'
+                                }
+                                onClick={() => setFormat('image')}
+                            >
+                                <ImageIcon /> Imagen
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant={
+                                    format === 'pdf' ? 'default' : 'outline'
+                                }
+                                onClick={() => setFormat('pdf')}
+                            >
+                                <FileText /> PDF
+                            </Button>
+                        </div>
+                    </div>
                     <Button
-                        variant="outline"
-                        className="border-emerald-600 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400"
-                        asChild
+                        className="w-full bg-emerald-600 text-white hover:bg-emerald-700"
+                        disabled={!ready}
+                        onClick={() => void shareTicket()}
                     >
+                        <MessageCircle />
+                        {ready
+                            ? `Enviar ${format === 'pdf' ? 'PDF' : 'imagen'} del ticket`
+                            : failed
+                              ? 'No se pudo preparar el ticket'
+                              : 'Preparando ticket…'}
+                    </Button>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
                         <a
                             href={whatsappUrl(
                                 c.client?.phone,
@@ -150,14 +217,35 @@ export default function CollectionReceipt({
                             )}
                             target="_blank"
                             rel="noreferrer"
+                            className="text-emerald-700 underline-offset-4 hover:underline dark:text-emerald-400"
                         >
-                            <MessageCircle /> Enviar por WhatsApp
+                            Enviar solo como texto
                         </a>
-                    </Button>
-                </div>
+                        {ready && (
+                            <button
+                                type="button"
+                                className="inline-flex items-center gap-1 text-muted-foreground underline-offset-4 hover:underline"
+                                onClick={() =>
+                                    downloadFile(
+                                        format === 'pdf'
+                                            ? ready.pdf
+                                            : ready.image,
+                                    )
+                                }
+                            >
+                                <Download className="size-3.5" /> Descargar{' '}
+                                {format === 'pdf' ? 'PDF' : 'imagen'}
+                            </button>
+                        )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                        En el teléfono se abre el menú «Compartir» con el
+                        ticket adjunto: elija WhatsApp y el contacto del
+                        cliente. Se envía la copia del cliente, en quetzales.
+                    </p>
+                </section>
                 <p className="text-xs text-muted-foreground">
-                    Para guardar en PDF, use «Imprimir» y elija «Guardar como
-                    PDF». Vista previa: copia de {copy}.
+                    Vista previa: copia de {copy}.
                 </p>
             </div>
 
