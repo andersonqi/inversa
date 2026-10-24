@@ -97,7 +97,7 @@ export default function MachineShow({
                             <>
                                 <Button variant="outline" asChild>
                                     <Link href={machines.edit(machine.id)}>
-                                        <Pencil /> Editar / reubicar
+                                        <Pencil /> Editar
                                     </Link>
                                 </Button>
                                 <ConfirmAction

@@ -97,6 +97,40 @@ class MachineMovementService
         });
     }
 
+    /**
+     * Registra en el historial un cambio de ubicación hecho desde el formulario de la
+     * máquina (alta o edición). Devuelve null si la ubicación no cambió.
+     */
+    public function logFormChange(User $user, Machine $machine, ?int $previousClientId, ?MachineStatus $previousStatus): ?MachineMovement
+    {
+        $wasInstalled = $previousStatus === MachineStatus::Installed && $previousClientId !== null;
+        $isInstalled = $machine->status === MachineStatus::Installed && $machine->client_id !== null;
+
+        $type = match (true) {
+            $wasInstalled && $isInstalled && $previousClientId !== $machine->client_id => MachineMovementType::Transfer,
+            $wasInstalled && ! $isInstalled => MachineMovementType::Warehouse,
+            ! $wasInstalled && $isInstalled => MachineMovementType::Install,
+            default => null,
+        };
+
+        if ($type === null) {
+            return null;
+        }
+
+        $reason = $previousStatus === null
+            ? 'Instalada al registrar la máquina.'
+            : 'Cambio desde el formulario de la máquina'.($isInstalled ? '.' : " (estado: {$machine->status->label()}).");
+
+        return $this->record(
+            $user,
+            $machine,
+            $type,
+            $wasInstalled ? $previousClientId : null,
+            $isInstalled ? $machine->client_id : null,
+            $reason,
+        );
+    }
+
     private function lock(Machine $machine): Machine
     {
         return Machine::query()->lockForUpdate()->findOrFail($machine->id);

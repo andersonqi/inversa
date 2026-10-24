@@ -29,6 +29,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useOnline } from '@/hooks/use-online';
 import { date, money, num, percent, signClass } from '@/lib/format';
 import { offlineSupported } from '@/lib/offline-store';
+import type { QueuedCollection } from '@/lib/offline-store';
 import { queueCollection } from '@/lib/offline-sync';
 import collections from '@/routes/collections';
 import type { Client, IdName, Machine } from '@/types';
@@ -108,6 +109,40 @@ export default function CollectionCreate({
 }) {
     // Cada corte guardado sin conexión reinicia el formulario.
     const [savedOffline, setSavedOffline] = useState(0);
+    // Contadores que dejaron los cortes guardados sin conexión: el siguiente corte de la
+    // misma máquina parte de ellos (aún no están en el servidor).
+    const [counters, setCounters] = useState<
+        Record<number, { in: number; out: number }>
+    >({});
+
+    const currentClient: Client | null = client && {
+        ...client,
+        machines: client.machines?.map((m) => {
+            const saved = counters[m.id] as
+                | { in: number; out: number }
+                | undefined;
+
+            return saved
+                ? { ...m, counter_in: saved.in, counter_out: saved.out }
+                : m;
+        }),
+    };
+
+    const savedLocally = (item: QueuedCollection) => {
+        setCounters((previous) => {
+            const next = { ...previous };
+
+            for (const reading of item.data.items) {
+                next[reading.machine_id] = {
+                    in: Number(reading.current_in),
+                    out: Number(reading.current_out),
+                };
+            }
+
+            return next;
+        });
+        setSavedOffline((n) => n + 1);
+    };
 
     return (
         <Page className="max-w-6xl">
@@ -151,12 +186,12 @@ export default function CollectionCreate({
                 </Field>
             </Panel>
 
-            {client && (
+            {currentClient && (
                 <CollectionForm
-                    key={`${client.id}-${savedOffline}`}
-                    client={client}
+                    key={`${currentClient.id}-${savedOffline}`}
+                    client={currentClient}
                     today={today}
-                    onSavedOffline={() => setSavedOffline((n) => n + 1)}
+                    onSavedOffline={savedLocally}
                 />
             )}
         </Page>
@@ -176,7 +211,7 @@ export function CollectionForm({
     client: Client;
     today: string;
     offline?: boolean;
-    onSavedOffline?: () => void;
+    onSavedOffline?: (item: QueuedCollection) => void;
 }) {
     const machines = client.machines ?? [];
     const loans = client.active_loans ?? [];
@@ -352,7 +387,7 @@ export function CollectionForm({
         try {
             const data = form.data;
 
-            await queueCollection(auth.user.id, client, {
+            const queued = await queueCollection(auth.user.id, client, {
                 collected_on: data.collected_on,
                 notes: data.notes,
                 signature: data.signature,
@@ -376,7 +411,7 @@ export function CollectionForm({
             toast.success(
                 'Corte guardado en el teléfono. Se enviará al recuperar la señal.',
             );
-            onSavedOffline?.();
+            onSavedOffline?.(queued);
         } catch {
             toast.error('No se pudo guardar el corte en el teléfono.');
         } finally {

@@ -29,6 +29,16 @@ export default function MachineForm({
     const [status, setStatus] = useState<string>(
         machine?.status ?? 'warehouse',
     );
+    // Con cortes, la ubicación cambia solo con las acciones de logística de la ficha.
+    const locationLocked = machine !== null && hasReadings;
+    const installedLocked = locationLocked && machine?.status === 'installed';
+    const statusOptions = locationLocked
+        ? statuses.filter((s) =>
+              installedLocked
+                  ? s.value === 'installed'
+                  : s.value !== 'installed',
+          )
+        : statuses;
 
     return (
         <Page className="max-w-3xl">
@@ -132,6 +142,18 @@ export default function MachineForm({
                                 <legend className="text-sm font-semibold">
                                     Ubicación
                                 </legend>
+                                {locationLocked && (
+                                    <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+                                        La máquina ya tiene cortes: para
+                                        cambiarla de cliente, enviarla a bodega
+                                        o instalarla use{' '}
+                                        <strong>Transferir</strong>,{' '}
+                                        <strong>A central</strong> o{' '}
+                                        <strong>Asignar a cliente</strong> en la
+                                        ficha de la máquina. Así se verifican
+                                        los contadores y queda el historial.
+                                    </p>
+                                )}
                                 <FormGrid>
                                     <Field
                                         label="Estado"
@@ -146,7 +168,7 @@ export default function MachineForm({
                                                 setStatus(e.target.value)
                                             }
                                         >
-                                            {statuses.map((s) => (
+                                            {statusOptions.map((s) => (
                                                 <option
                                                     key={s.value}
                                                     value={s.value}
@@ -156,7 +178,36 @@ export default function MachineForm({
                                             ))}
                                         </NativeSelect>
                                     </Field>
-                                    {status === 'installed' && (
+                                    {installedLocked && (
+                                        <Field label="Cliente">
+                                            <input
+                                                type="hidden"
+                                                name="client_id"
+                                                value={machine?.client_id ?? ''}
+                                            />
+                                            <input
+                                                type="hidden"
+                                                name="installed_at"
+                                                value={
+                                                    machine?.installed_at?.slice(
+                                                        0,
+                                                        10,
+                                                    ) ?? ''
+                                                }
+                                            />
+                                            <p className="flex h-9 items-center text-sm">
+                                                {clients.find(
+                                                    (c) =>
+                                                        c.id ===
+                                                        machine?.client_id,
+                                                )?.name ??
+                                                    machine?.client?.name ??
+                                                    '—'}
+                                            </p>
+                                        </Field>
+                                    )}
+                                    {status === 'installed' &&
+                                        !installedLocked && (
                                         <>
                                             <Field
                                                 label="Cliente"

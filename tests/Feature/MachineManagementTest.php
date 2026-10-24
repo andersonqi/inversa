@@ -2,8 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Enums\MachineMovementType;
 use App\Enums\MachineStatus;
+use App\Models\Client;
 use App\Models\Machine;
+use App\Models\MachineMovement;
+use App\Services\MachineMovementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\BuildsOperation;
 use Tests\TestCase;
@@ -179,6 +183,72 @@ class MachineManagementTest extends TestCase
         $this->assertSame(1100, $machine->counter_in);
         $this->assertSame(550, $machine->counter_out);
         $this->assertSame('100.00', $machine->credit_value);
+    }
+
+    public function test_machine_with_readings_cannot_be_relocated_from_the_form(): void
+    {
+        $neighbor = Client::create(['collection_route_id' => $this->route->id, 'name' => 'Tienda Vecina', 'commission_percent' => 30]);
+
+        foreach ([
+            ['status' => 'installed', 'client_id' => $neighbor->id],
+            ['status' => 'warehouse', 'client_id' => null],
+        ] as $change) {
+            $this->actingAs($this->admin)
+                ->put(route('machines.update', $this->machine), $this->payload(['code' => 'MAQ-1', ...$change]))
+                ->assertSessionHasErrors('status');
+        }
+
+        $machine = $this->machine->fresh();
+        $this->assertSame($this->client->id, $machine?->client_id);
+        $this->assertSame(MachineStatus::Installed, $machine?->status);
+        $this->assertSame(0, MachineMovement::count());
+    }
+
+    public function test_machine_with_readings_in_warehouse_can_change_to_maintenance_or_retired(): void
+    {
+        app(MachineMovementService::class)->sendToWarehouse($this->admin, $this->machine, 1100, 550, 'Falla');
+
+        $this->actingAs($this->admin)
+            ->put(route('machines.update', $this->machine), $this->payload(['code' => 'MAQ-1', 'status' => 'retired']))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(MachineStatus::Retired, $this->machine->fresh()?->status);
+    }
+
+    public function test_form_relocations_are_saved_in_the_history(): void
+    {
+        // Alta directamente instalada.
+        $this->actingAs($this->admin)
+            ->post(route('machines.store'), $this->payload(['status' => 'installed', 'client_id' => $this->client->id]))
+            ->assertSessionHasNoErrors();
+
+        $machine = Machine::where('code', 'MAQ-9')->firstOrFail();
+        $install = $machine->movements()->firstOrFail();
+        $this->assertSame(MachineMovementType::Install, $install->type);
+        $this->assertSame($this->client->id, $install->to_client_id);
+
+        // Sin cortes todavía: se puede reubicar desde el formulario y queda registrado.
+        $neighbor = Client::create(['collection_route_id' => $this->route->id, 'name' => 'Tienda Vecina', 'commission_percent' => 30]);
+
+        $this->actingAs($this->admin)
+            ->put(route('machines.update', $machine), $this->payload(['status' => 'installed', 'client_id' => $neighbor->id]))
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($this->admin)
+            ->put(route('machines.update', $machine), $this->payload(['status' => 'maintenance']))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(
+            [MachineMovementType::Install, MachineMovementType::Transfer, MachineMovementType::Warehouse],
+            $machine->movements()->orderBy('id')->get()->pluck('type')->all(),
+        );
+
+        // Editar otros datos sin cambiar la ubicación no agrega movimientos.
+        $this->actingAs($this->admin)
+            ->put(route('machines.update', $machine), $this->payload(['status' => 'maintenance', 'brand' => 'Otra']))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(3, $machine->movements()->count());
     }
 
     public function test_machine_with_readings_cannot_be_deleted(): void

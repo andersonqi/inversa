@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\MachineStatus;
 use App\Models\Client;
 use App\Models\Machine;
+use App\Services\MachineMovementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -67,9 +68,11 @@ class MachineController extends Controller
         return Inertia::render('machines/form', $this->formProps($request, null));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, MachineMovementService $movements): RedirectResponse
     {
         $machine = Machine::create($this->validated($request));
+
+        $movements->logFormChange($request->user(), $machine, null, null);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Máquina registrada.']);
 
@@ -83,11 +86,16 @@ class MachineController extends Controller
         return Inertia::render('machines/form', $this->formProps($request, $machine));
     }
 
-    public function update(Request $request, Machine $machine): RedirectResponse
+    public function update(Request $request, Machine $machine, MachineMovementService $movements): RedirectResponse
     {
         $this->ensureVisible($request, $machine);
 
+        $previousClientId = $machine->client_id;
+        $previousStatus = $machine->status;
+
         $machine->update($this->validated($request, $machine));
+
+        $movements->logFormChange($request->user(), $machine, $previousClientId, $previousStatus);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Máquina actualizada.']);
 
@@ -172,8 +180,18 @@ class MachineController extends Controller
             $data['installed_at'] ??= now()->toDateString();
         }
 
+        $hasReadings = $machine?->collectionItems()->exists() ?? false;
+
+        // Con cortes, los cambios de ubicación pasan por las acciones de logística, que
+        // verifican que no haya jugadas sin cortar y guardan el historial con motivo.
+        if ($machine && $hasReadings && $this->changesLocation($machine, $data)) {
+            throw ValidationException::withMessages([
+                'status' => 'La máquina tiene cortes: para cambiarla de cliente, enviarla a bodega o instalarla use Transferir, Mover a central o Asignar a cliente en la ficha de la máquina.',
+            ]);
+        }
+
         // Una vez que hay cortes, los contadores solo cambian a través de los cortes.
-        if ($machine?->collectionItems()->exists()) {
+        if ($hasReadings) {
             unset($data['counter_in'], $data['counter_out'], $data['credit_value']);
         } else {
             $data['counter_in'] ??= 0;
@@ -181,5 +199,17 @@ class MachineController extends Controller
         }
 
         return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function changesLocation(Machine $machine, array $data): bool
+    {
+        $wasInstalled = $machine->status === MachineStatus::Installed;
+        $willInstall = $data['status'] === MachineStatus::Installed->value;
+
+        return $wasInstalled !== $willInstall
+            || ($willInstall && (int) $data['client_id'] !== $machine->client_id);
     }
 }
