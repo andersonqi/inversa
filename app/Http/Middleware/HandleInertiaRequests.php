@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\ExchangeRateService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -43,6 +44,24 @@ class HandleInertiaRequests extends Middleware
                 'permissions' => $request->user()?->role->permissions ?? [],
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'exchangeRate' => fn () => $request->user() ? $this->exchangeRate() : null,
         ];
+    }
+
+    /**
+     * Tipo de cambio vigente. Si está vencido se actualiza después de enviar la respuesta,
+     * para no hacer esperar la página por la consulta a Banguat.
+     *
+     * @return array{rate: float, date: string, source: string, fetched_at: string}|null
+     */
+    private function exchangeRate(): ?array
+    {
+        $service = app(ExchangeRateService::class);
+
+        if (config('services.exchange_rate.auto_refresh') && $service->isStale()) {
+            app()->terminating(fn () => $service->refreshIfStale());
+        }
+
+        return $service->current();
     }
 }

@@ -1,5 +1,5 @@
 import { usePage } from '@inertiajs/react';
-import AppLogoIcon from '@/components/app-logo-icon';
+import { ThemeLogoToggle } from '@/components/theme-logo-toggle';
 import type { AuthLayoutProps } from '@/types';
 
 /**
@@ -17,7 +17,7 @@ export default function AuthBrandLayout({
             <aside className="relative hidden overflow-hidden bg-felt-deep text-sidebar-foreground lg:flex lg:flex-col lg:justify-between lg:p-12">
                 <Reels />
                 <div className="relative flex items-center gap-3">
-                    <AppLogoIcon className="size-10" />
+                    <ThemeLogoToggle className="size-10" />
                     <span className="font-display text-2xl font-semibold tracking-tight text-white">
                         {name}
                     </span>
@@ -30,7 +30,7 @@ export default function AuthBrandLayout({
             <main className="flex items-center justify-center bg-background p-6 md:p-10">
                 <div className="w-full max-w-sm space-y-8">
                     <div className="flex items-center gap-3 lg:hidden">
-                        <AppLogoIcon className="size-9" />
+                        <ThemeLogoToggle className="size-9" />
                         <span className="font-display text-xl font-semibold tracking-tight">
                             {name}
                         </span>

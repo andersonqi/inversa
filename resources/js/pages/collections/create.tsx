@@ -807,7 +807,7 @@ function MachineCard({
 
                 <div className="grid grid-cols-2 gap-3">
                     <Field
-                        label="Efectivo contado (reales)"
+                        label="Efectivo contado (Q)"
                         htmlFor={`${id}-cash`}
                         error={error('cash_counted')}
                     >

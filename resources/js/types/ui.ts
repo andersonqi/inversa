@@ -19,3 +19,12 @@ export type AuthLayoutProps = {
     title?: string;
     description?: string;
 };
+
+/** Tipo de cambio de referencia compartido por el servidor (quetzales por 1 US$). */
+export type ExchangeRateInfo = {
+    rate: number;
+    date: string;
+    source: string;
+    fetched_at: string;
+};
+

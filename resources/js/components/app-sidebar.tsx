@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import {
     Banknote,
     BarChart3,
@@ -13,16 +13,15 @@ import {
     Users,
     WifiOff,
 } from 'lucide-react';
-import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
+import { ThemeLogoToggle } from '@/components/theme-logo-toggle';
 import {
     Sidebar,
     SidebarContent,
     SidebarFooter,
     SidebarHeader,
     SidebarMenu,
-    SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { useCan } from '@/hooks/use-can';
@@ -128,17 +127,24 @@ const groups: { label: string; items: GuardedItem[] }[] = [
 
 export function AppSidebar() {
     const can = useCan();
+    const { name } = usePage().props;
 
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
                 <SidebarMenu>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" asChild>
-                            <Link href={dashboard()} prefetch>
-                                <AppLogo />
-                            </Link>
-                        </SidebarMenuButton>
+                    <SidebarMenuItem className="flex h-12 items-center gap-1 px-2 group-data-[collapsible=icon]:px-0">
+                        {/* El logo cambia entre modo oscuro y claro; el nombre lleva al panel. */}
+                        <ThemeLogoToggle className="size-8" />
+                        <Link
+                            href={dashboard()}
+                            prefetch
+                            className="ml-1 grid min-w-0 flex-1 text-left group-data-[collapsible=icon]:hidden"
+                        >
+                            <span className="truncate font-display text-lg leading-tight font-semibold tracking-tight text-sidebar-foreground">
+                                {name}
+                            </span>
+                        </Link>
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarHeader>

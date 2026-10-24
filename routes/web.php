@@ -5,6 +5,7 @@ use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\CollectionRouteController;
 use App\Http\Controllers\CollectionSyncController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ExchangeRateController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\LoanController;
 use App\Http\Controllers\LoanPaymentController;
@@ -20,6 +21,8 @@ Route::redirect('/', '/dashboard')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+
+    Route::post('exchange-rate/refresh', [ExchangeRateController::class, 'refresh'])->name('exchange.refresh')->middleware('throttle:6,1');
 
     // Recursos con permisos "{modulo}.view" para lectura y "{modulo}.manage" para escritura.
     $resources = [

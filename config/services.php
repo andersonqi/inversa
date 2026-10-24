@@ -28,6 +28,13 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    // Tipo de cambio quetzal / dólar (Banguat, con fuente de respaldo).
+    'exchange_rate' => [
+        // Actualizar en segundo plano al navegar cuando el dato está vencido.
+        'auto_refresh' => (bool) env('EXCHANGE_RATE_AUTO_REFRESH', true),
+        'max_age_minutes' => (int) env('EXCHANGE_RATE_MAX_AGE_MINUTES', 60),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

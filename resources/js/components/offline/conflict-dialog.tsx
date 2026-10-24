@@ -9,7 +9,7 @@ import {
     DialogFooter,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { date, money, num, signClass } from '@/lib/format';
+import { date, gtq as money, num, signClass } from '@/lib/format';
 import { deleteQueued } from '@/lib/offline-store';
 import type { QueuedCollection } from '@/lib/offline-store';
 import { syncOne } from '@/lib/offline-sync';

@@ -1,18 +1,71 @@
-const moneyFormatter = new Intl.NumberFormat('es', {
+const moneyFormatter = new Intl.NumberFormat('es-GT', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
     useGrouping: 'always',
 });
 
-const numberFormatter = new Intl.NumberFormat('es', { useGrouping: 'always' });
+const numberFormatter = new Intl.NumberFormat('es-GT', {
+    useGrouping: 'always',
+});
 
-/** Símbolo de la moneda de operación: colones. */
-export const CURRENCY = '₡';
+export type CurrencyCode = 'GTQ' | 'USD';
 
-export function money(value: number | string | null | undefined): string {
-    const n = Number(value ?? 0);
+export const CURRENCIES: Record<CurrencyCode, { symbol: string; name: string }> =
+    {
+        GTQ: { symbol: 'Q', name: 'Quetzal guatemalteco' },
+        USD: { symbol: 'US$', name: 'Dólar estadounidense' },
+    };
 
-    return (n < 0 ? '-' : '') + CURRENCY + moneyFormatter.format(Math.abs(n));
+/** Símbolo de la moneda de operación: quetzales (los montos se guardan siempre en Q). */
+export const CURRENCY = CURRENCIES.GTQ.symbol;
+
+/** Moneda en que se muestran los montos y quetzales por dólar para convertirlos. */
+let display: { code: CurrencyCode; rate: number | null } = {
+    code: 'GTQ',
+    rate: null,
+};
+
+/**
+ * Define la moneda de visualización. Sin tipo de cambio disponible se muestra en quetzales.
+ * La aplica el layout (ver CurrencyBoundary), que vuelve a dibujar la página al cambiarla.
+ */
+export function configureCurrency(code: CurrencyCode, rate: number | null) {
+    display = { code: code === 'USD' && rate ? 'USD' : 'GTQ', rate };
+}
+
+export function displayCurrency(): CurrencyCode {
+    return display.code;
+}
+
+/**
+ * Formatea un monto guardado en quetzales en la moneda de visualización
+ * (o en la moneda indicada).
+ */
+export function money(
+    value: number | string | null | undefined,
+    currency?: CurrencyCode,
+): string {
+    let code = currency ?? display.code;
+    let n = Number(value ?? 0);
+
+    if (code === 'USD') {
+        if (display.rate) {
+            n = n / display.rate;
+        } else {
+            code = 'GTQ';
+        }
+    }
+
+    return (
+        (n < 0 ? '-' : '') +
+        CURRENCIES[code].symbol +
+        moneyFormatter.format(Math.abs(n))
+    );
+}
+
+/** Monto siempre en quetzales (formularios, recibos y cortes). */
+export function gtq(value: number | string | null | undefined): string {
+    return money(value, 'GTQ');
 }
 
 export function num(value: number | string | null | undefined): string {

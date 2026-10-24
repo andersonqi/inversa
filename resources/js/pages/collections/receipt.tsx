@@ -3,7 +3,8 @@ import { ArrowLeft, MessageCircle, Printer } from 'lucide-react';
 import { useState } from 'react';
 import { flushSync } from 'react-dom';
 import { Button } from '@/components/ui/button';
-import { date, money, num, percent } from '@/lib/format';
+// El recibo es un comprobante: siempre en quetzales, sin importar la moneda elegida.
+import { date, gtq as money, num, percent } from '@/lib/format';
 import { whatsappUrl } from '@/lib/route-tools';
 import { cn } from '@/lib/utils';
 import clients from '@/routes/clients';
