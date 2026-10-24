@@ -71,6 +71,26 @@ async function cacheShell(url) {
     }
 }
 
+// Al tocar un aviso de notificación se abre (o enfoca) la pantalla de notificaciones.
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const url = (event.notification.data && event.notification.data.url) || '/notifications';
+
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+            for (const client of windows) {
+                if ('focus' in client) {
+                    client.navigate(url).catch(() => undefined);
+
+                    return client.focus();
+                }
+            }
+
+            return self.clients.openWindow(url);
+        }),
+    );
+});
+
 self.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'cache-offline-shell') {
         event.waitUntil(cacheShell(event.data.url || OFFLINE_URL).catch(() => undefined));

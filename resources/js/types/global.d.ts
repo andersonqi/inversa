@@ -1,3 +1,4 @@
+import type { BrandTheme } from '@/lib/brand-theme';
 import type { Auth } from '@/types/auth';
 import type { ExchangeRateInfo } from '@/types/ui';
 
@@ -15,6 +16,8 @@ declare module '@inertiajs/core' {
             sidebarOpen: boolean;
             /** Tipo de cambio de referencia: quetzales por 1 US$. */
             exchangeRate?: ExchangeRateInfo | null;
+            /** Color y logo de la interfaz. */
+            theme?: BrandTheme;
             [key: string]: unknown;
         };
     }

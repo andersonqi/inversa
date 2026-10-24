@@ -645,7 +645,7 @@ export function CollectionForm({
                 </div>
             </Panel>
 
-            <div className="sticky bottom-0 -mx-4 space-y-2 border-t bg-background/95 px-4 py-3 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
+            <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] -mx-4 space-y-2 rounded-t-2xl border-t bg-background/95 px-4 py-3 backdrop-blur md:static md:mx-0 md:rounded-none md:border-0 md:bg-transparent md:p-0">
                 {blocked && (
                     <p className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
                         <TriangleAlert className="size-4" />

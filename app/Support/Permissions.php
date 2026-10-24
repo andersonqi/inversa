@@ -52,8 +52,11 @@ class Permissions
         'Reportes' => [
             'reports.view' => 'Ver reportes',
         ],
+        'Notificaciones' => [
+            'notifications.send' => 'Enviar notificaciones a cobradores',
+        ],
         'Configuración' => [
-            'settings.manage' => 'Configurar parámetros (montos de rendimiento de máquinas)',
+            'settings.manage' => 'Configurar parámetros (montos de rendimiento, logo y color de la empresa)',
         ],
     ];
 

@@ -72,6 +72,7 @@ type Line =
     | { kind: 'columns'; cells: [string, string, string, string]; bold?: boolean }
     | { kind: 'divider' }
     | { kind: 'signature'; image: HTMLImageElement | null }
+    | { kind: 'logo'; image: HTMLImageElement }
     | { kind: 'space'; height: number };
 
 function buildLines(
@@ -79,8 +80,10 @@ function buildLines(
     c: Collection,
     loansBalance: number,
     signature: HTMLImageElement | null,
+    logo: HTMLImageElement | null,
 ): Line[] {
     const lines: Line[] = [
+        ...(logo ? [{ kind: 'logo', image: logo } as const] : []),
         { kind: 'center', text: company.toUpperCase(), bold: true, scale: 1.3 },
         { kind: 'center', text: 'Recibo de corte' },
         { kind: 'center', text: `#${receiptNumber(c.id)}`, bold: true },
@@ -240,6 +243,7 @@ async function renderCanvas(
     loansBalance: number,
     paper: PaperWidth,
     signatureUrl: string | null,
+    logoUrl: string | null,
 ): Promise<HTMLCanvasElement> {
     const scale = 2;
     // 58 mm ≈ 384 px y 80 mm ≈ 576 px en impresoras térmicas de 203 ppp.
@@ -250,8 +254,11 @@ async function renderCanvas(
     const lineHeight = Math.round(fontSize * 1.45);
     const inner = width - padding * 2;
 
-    const signature = signatureUrl ? await loadImage(signatureUrl) : null;
-    const lines = buildLines(company, c, loansBalance, signature);
+    const [signature, logo] = await Promise.all([
+        signatureUrl ? loadImage(signatureUrl) : Promise.resolve(null),
+        logoUrl ? loadImage(logoUrl) : Promise.resolve(null),
+    ]);
+    const lines = buildLines(company, c, loansBalance, signature, logo);
 
     const canvas = document.createElement('canvas');
     canvas.width = width;
@@ -297,6 +304,9 @@ async function renderCanvas(
         } else if (line.kind === 'signature') {
             ops.push({ line, y });
             y += line.image ? lineHeight * 3.2 : lineHeight * 2.2;
+        } else if (line.kind === 'logo') {
+            ops.push({ line, y });
+            y += lineHeight * 3.4;
         } else if (line.kind === 'space') {
             y += lineHeight * line.height;
         } else {
@@ -392,6 +402,21 @@ async function renderCanvas(
                 ctx.stroke();
                 break;
             }
+            case 'logo': {
+                // Logo centrado en escala de grises (como saldrá en la impresora térmica).
+                const area = lineHeight * 3;
+                const ratio = Math.min(
+                    (inner * 0.6) / line.image.width,
+                    area / line.image.height,
+                );
+                const w = line.image.width * ratio;
+                const h = line.image.height * ratio;
+                ctx.save();
+                ctx.filter = 'grayscale(1)';
+                ctx.drawImage(line.image, (width - w) / 2, top, w, h);
+                ctx.restore();
+                break;
+            }
             default:
                 break;
         }
@@ -483,6 +508,7 @@ export async function buildReceiptFiles(
     loansBalance: number,
     paper: PaperWidth,
     signatureUrl: string | null,
+    logoUrl: string | null = null,
 ): Promise<{ image: File; pdf: File }> {
     const canvas = await renderCanvas(
         company,
@@ -490,6 +516,7 @@ export async function buildReceiptFiles(
         loansBalance,
         paper,
         signatureUrl,
+        logoUrl,
     );
     const name = `recibo-${receiptNumber(c.id)}`;
 

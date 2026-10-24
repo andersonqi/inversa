@@ -50,7 +50,8 @@ export default function CollectionReceipt({
     collection: Collection;
     loansBalance: number;
 }) {
-    const { name: company } = usePage().props;
+    const { name: company, theme } = usePage().props;
+    const logoUrl = theme?.logo_url ?? null;
     const [width, setWidth] = useState<Width>(storedWidth);
     const [copy, setCopy] = useState<Copy>('cliente');
 
@@ -83,7 +84,7 @@ export default function CollectionReceipt({
     useEffect(() => {
         let active = true;
 
-        buildReceiptFiles(company, c, loansBalance, width, signatureUrl)
+        buildReceiptFiles(company, c, loansBalance, width, signatureUrl, logoUrl)
             .then((built) => {
                 if (active) {
                     setFiles({ width, ...built });
@@ -98,7 +99,7 @@ export default function CollectionReceipt({
         return () => {
             active = false;
         };
-    }, [company, c, loansBalance, width, signatureUrl]);
+    }, [company, c, loansBalance, width, signatureUrl, logoUrl]);
 
     const shareTicket = async () => {
         if (!ready) {
@@ -256,6 +257,13 @@ export default function CollectionReceipt({
                 )}
             >
                 <header className="text-center">
+                    {logoUrl && (
+                        <img
+                            src={logoUrl}
+                            alt=""
+                            className="mx-auto mb-1 max-h-14 max-w-[60%] object-contain grayscale"
+                        />
+                    )}
                     <p className="text-[1.3em] font-bold uppercase">
                         {company}
                     </p>

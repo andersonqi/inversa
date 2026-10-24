@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BrandingController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\CollectionRouteController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\LoanController;
 use App\Http\Controllers\LoanPaymentController;
 use App\Http\Controllers\MachineController;
 use App\Http\Controllers\MachineMovementController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OfficeController;
 use App\Http\Controllers\PerformanceSettingsController;
 use App\Http\Controllers\ReportController;
@@ -20,12 +22,31 @@ use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard')->name('home');
 
+// Logo de la empresa: público porque también se muestra en la pantalla de ingreso.
+Route::get('branding/logo', [BrandingController::class, 'logo'])->name('branding.logo');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
 
     Route::post('exchange-rate/refresh', [ExchangeRateController::class, 'refresh'])->name('exchange.refresh')->middleware('throttle:6,1');
 
     Route::put('parameters/performance', [PerformanceSettingsController::class, 'update'])->name('parameters.performance')->middleware('can:settings.manage');
+
+    // Identidad de la empresa: logo y color.
+    Route::middleware('can:settings.manage')->group(function () {
+        Route::get('settings/branding', [BrandingController::class, 'edit'])->name('branding.edit');
+        Route::post('settings/branding', [BrandingController::class, 'update'])->name('branding.update');
+    });
+
+    // Notificaciones internas.
+    Route::prefix('notifications')->name('notifications.')->controller(NotificationController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('feed', 'feed')->name('feed');
+        Route::post('/', 'store')->name('store')->middleware('can:notifications.send');
+        Route::post('read-all', 'readAll')->name('readAll');
+        Route::post('{announcement}/read', 'read')->name('read');
+        Route::delete('{announcement}', 'destroy')->name('destroy');
+    });
 
     // Recursos con permisos "{modulo}.view" para lectura y "{modulo}.manage" para escritura.
     $resources = [

@@ -1,8 +1,14 @@
+@php
+    // Color de la interfaz (validado como #rrggbb en App\Support\Branding).
+    $theme = $page['props']['theme'] ?? null;
+    $brand = is_array($theme) && preg_match('/^#[0-9a-fA-F]{6}$/', $theme['color'] ?? '') ? $theme['color'] : '#0e5a4a';
+    $brandContrast = is_array($theme) && preg_match('/^#[0-9a-fA-F]{6}$/', $theme['contrast'] ?? '') ? $theme['contrast'] : '#ffffff';
+@endphp
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" @class(['dark' => ($appearance ?? 'system') == 'dark'])>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" @class(['dark' => ($appearance ?? 'system') == 'dark']) style="--brand: {{ $brand }}; --brand-contrast: {{ $brandContrast }};">
     <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
         {{-- Inline script to detect system dark mode preference and apply it immediately --}}
         <script>
@@ -19,14 +25,10 @@
             })();
         </script>
 
-        {{-- Inline style to set the HTML background color based on our theme in app.css --}}
+        {{-- Fondo inicial con el color de la marca (antes de cargar los estilos) --}}
         <style>
             html {
-                background-color: #0b332c;
-            }
-
-            html.dark {
-                background-color: #08201b;
+                background-color: color-mix(in oklab, var(--brand) 40%, #000);
             }
         </style>
 
@@ -34,7 +36,7 @@
         <link rel="icon" href="/favicon.svg" type="image/svg+xml">
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
         <link rel="manifest" href="/manifest.webmanifest">
-        <meta name="theme-color" content="#0b332c">
+        <meta name="theme-color" content="{{ $brand }}">
 
         @fonts
 

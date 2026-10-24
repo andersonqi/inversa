@@ -1,5 +1,5 @@
 import { Moon, Sun } from 'lucide-react';
-import AppLogoIcon from '@/components/app-logo-icon';
+import { BrandMark } from '@/components/brand-mark';
 import { useAppearance } from '@/hooks/use-appearance';
 import { cn } from '@/lib/utils';
 
@@ -24,7 +24,7 @@ export function ThemeLogoToggle({ className }: { className?: string }) {
                 className,
             )}
         >
-            <AppLogoIcon
+            <BrandMark
                 className={cn(
                     'size-full transition-transform duration-500 group-hover:-rotate-6',
                     dark && 'rotate-[360deg] group-hover:rotate-[354deg]',

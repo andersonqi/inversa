@@ -66,6 +66,8 @@ class PageAccessTest extends TestCase
             'rendimiento maquinas' => ['/reports/machines?only_losing=0&page=2', 'reports/machines', 'reports.view'],
             'rentabilidad rutas' => ['/reports/routes', 'reports/routes', 'reports.view'],
             'cartera' => ['/reports/loans', 'reports/loans', 'reports.view'],
+            'notificaciones' => ['/notifications', 'notifications/index', null],
+            'empresa' => ['/settings/branding', 'settings/branding', 'settings.manage'],
             'perfil' => ['/settings/profile', 'settings/profile', null],
             'apariencia' => ['/settings/appearance', 'settings/appearance', null],
         ];

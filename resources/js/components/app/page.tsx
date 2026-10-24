@@ -9,7 +9,12 @@ export function Page({
     children: ReactNode;
 }) {
     return (
-        <div className={cn('flex flex-1 flex-col gap-6 p-4 md:p-6', className)}>
+        <div
+            className={cn(
+                'mx-auto flex w-full flex-1 flex-col gap-6 p-4 md:p-6 lg:p-8',
+                className,
+            )}
+        >
             {children}
         </div>
     );
@@ -25,13 +30,13 @@ export function PageHeader({
     actions?: ReactNode;
 }) {
     return (
-        <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-1">
-                <h1 className="text-2xl font-semibold tracking-tight">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+            <div className="min-w-0 space-y-1.5">
+                <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
                     {title}
                 </h1>
                 {description && (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="max-w-3xl text-sm text-muted-foreground">
                         {description}
                     </p>
                 )}
@@ -59,13 +64,19 @@ export function Panel({
     return (
         <section
             className={cn(
-                'rounded-xl border bg-card text-card-foreground',
+                'overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-card',
                 className,
             )}
         >
             {(title || actions) && (
-                <header className="flex items-center justify-between gap-2 border-b px-4 py-3">
-                    <h2 className="text-sm font-semibold">{title}</h2>
+                <header className="flex flex-wrap items-center justify-between gap-2 border-b px-5 py-3.5">
+                    <h2 className="flex items-center gap-2 text-[0.95rem] font-semibold tracking-tight">
+                        <span
+                            aria-hidden="true"
+                            className="h-4 w-1 rounded-full bg-primary"
+                        />
+                        {title}
+                    </h2>
                     {actions}
                 </header>
             )}

@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Services\ExchangeRateService;
+use App\Support\Branding;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -45,6 +46,8 @@ class HandleInertiaRequests extends Middleware
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'exchangeRate' => fn () => $request->user() ? $this->exchangeRate() : null,
+            // Color y logo de la interfaz (también en la pantalla de ingreso).
+            'theme' => fn () => Branding::theme($request->user()),
         ];
     }
 

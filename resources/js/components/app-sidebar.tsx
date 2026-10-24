@@ -2,6 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     Banknote,
     BarChart3,
+    Bell,
     Building2,
     Gamepad2,
     HandCoins,
@@ -31,6 +32,7 @@ import collections from '@/routes/collections';
 import expenses from '@/routes/expenses';
 import loans from '@/routes/loans';
 import machines from '@/routes/machines';
+import notifications from '@/routes/notifications';
 import offices from '@/routes/offices';
 import reports from '@/routes/reports';
 import roles from '@/routes/roles';
@@ -45,6 +47,11 @@ const groups: { label: string; items: GuardedItem[] }[] = [
         label: 'General',
         items: [
             { title: 'Panel', href: dashboard(), icon: LayoutGrid },
+            {
+                title: 'Notificaciones',
+                href: notifications.index(),
+                icon: Bell,
+            },
             {
                 title: 'Reportes',
                 href: reports.index(),

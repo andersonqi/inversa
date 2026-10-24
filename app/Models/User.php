@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -25,6 +26,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string $email
  * @property string|null $phone
  * @property bool $is_active
+ * @property string|null $accent_color Color de la interfaz elegido por el usuario (#rrggbb).
  * @property-read Role|null $role
  * @property-read Office|null $office
  * @property Carbon|null $email_verified_at
@@ -36,7 +38,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'password', 'phone', 'role_id', 'office_id', 'is_active', 'email_verified_at'])]
+#[Fillable(['name', 'email', 'password', 'phone', 'role_id', 'office_id', 'is_active', 'email_verified_at', 'accent_color'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 {
@@ -72,6 +74,16 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     public function routes(): HasMany
     {
         return $this->hasMany(CollectionRoute::class, 'collector_id');
+    }
+
+    /**
+     * Notificaciones recibidas (con su fecha de lectura).
+     *
+     * @return BelongsToMany<Announcement, $this>
+     */
+    public function announcements(): BelongsToMany
+    {
+        return $this->belongsToMany(Announcement::class)->withPivot('read_at');
     }
 
     public function hasPermission(string $permission): bool

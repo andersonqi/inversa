@@ -14,7 +14,7 @@ export default function AuthBrandLayout({
 
     return (
         <div className="grid min-h-dvh lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-            <aside className="relative hidden overflow-hidden bg-felt-deep text-sidebar-foreground lg:flex lg:flex-col lg:justify-between lg:p-12">
+            <aside className="relative hidden overflow-hidden brand-gradient text-sidebar-foreground lg:flex lg:flex-col lg:justify-between lg:p-12">
                 <Reels />
                 <div className="relative flex items-center gap-3">
                     <ThemeLogoToggle className="size-10" />
@@ -28,7 +28,7 @@ export default function AuthBrandLayout({
             </aside>
 
             <main className="flex items-center justify-center bg-background p-6 md:p-10">
-                <div className="w-full max-w-sm space-y-8">
+                <div className="w-full max-w-sm space-y-8 rounded-2xl border bg-card p-6 shadow-card sm:p-8 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none">
                     <div className="flex items-center gap-3 lg:hidden">
                         <ThemeLogoToggle className="size-9" />
                         <span className="font-display text-xl font-semibold tracking-tight">
