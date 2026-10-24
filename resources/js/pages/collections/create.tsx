@@ -1,6 +1,7 @@
-import { Head, router, useForm } from '@inertiajs/react';
-import { Camera, History, TriangleAlert } from 'lucide-react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { Camera, History, TriangleAlert, WifiOff } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { Pill } from '@/components/app/badges';
 import { Field } from '@/components/app/field';
 import { Page, PageHeader, Panel } from '@/components/app/page';
@@ -25,7 +26,10 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import { useOnline } from '@/hooks/use-online';
 import { date, money, num, percent, signClass } from '@/lib/format';
+import { offlineSupported } from '@/lib/offline-store';
+import { queueCollection } from '@/lib/offline-sync';
 import collections from '@/routes/collections';
 import type { Client, IdName, Machine } from '@/types';
 
@@ -102,9 +106,21 @@ export default function CollectionCreate({
     clients: IdName[];
     today: string;
 }) {
+    // Cada corte guardado sin conexión reinicia el formulario.
+    const [savedOffline, setSavedOffline] = useState(0);
+
     return (
         <Page className="max-w-6xl">
             <Head title="Registrar corte" />
+            {savedOffline > 0 && (
+                <Panel className="border-amber-300 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
+                    {savedOffline === 1
+                        ? 'Corte guardado en el teléfono.'
+                        : `${savedOffline} cortes guardados en el teléfono.`}{' '}
+                    Se enviarán solos al recuperar la señal; también puede
+                    revisarlos en «Trabajo sin conexión».
+                </Panel>
+            )}
             <PageHeader
                 title="Registrar corte"
                 description="Lea los contadores y cuente el efectivo de cada máquina. Las máquinas en pérdida no se cortan: se espera a que recuperen, salvo que haga un corte forzado."
@@ -136,15 +152,38 @@ export default function CollectionCreate({
             </Panel>
 
             {client && (
-                <CollectionForm key={client.id} client={client} today={today} />
+                <CollectionForm
+                    key={`${client.id}-${savedOffline}`}
+                    client={client}
+                    today={today}
+                    onSavedOffline={() => setSavedOffline((n) => n + 1)}
+                />
             )}
         </Page>
     );
 }
 
-function CollectionForm({ client, today }: { client: Client; today: string }) {
+/**
+ * Formulario de corte por lote de máquinas. Sin conexión (o con `offline`) el corte se
+ * guarda en el teléfono y se sincroniza al recuperar la señal.
+ */
+export function CollectionForm({
+    client,
+    today,
+    offline = false,
+    onSavedOffline,
+}: {
+    client: Client;
+    today: string;
+    offline?: boolean;
+    onSavedOffline?: () => void;
+}) {
     const machines = client.machines ?? [];
     const loans = client.active_loans ?? [];
+    const { auth } = usePage().props;
+    const online = useOnline();
+    const saveLocally = offline || !online;
+    const [savingLocally, setSavingLocally] = useState(false);
 
     const form = useForm<{
         client_id: number;
@@ -277,6 +316,12 @@ function CollectionForm({ client, today }: { client: Client; today: string }) {
             return;
         }
 
+        if (saveLocally) {
+            void saveOffline();
+
+            return;
+        }
+
         form.transform((data) => ({
             ...data,
             items: cut.map((r) => ({
@@ -293,6 +338,50 @@ function CollectionForm({ client, today }: { client: Client; today: string }) {
             loan_deduction: data.loan_id ? data.loan_deduction || 0 : 0,
         }));
         form.post(collections.store().url, { preserveScroll: true });
+    };
+
+    const saveOffline = async () => {
+        if (!offlineSupported()) {
+            toast.error('Este navegador no permite guardar cortes sin conexión.');
+
+            return;
+        }
+
+        setSavingLocally(true);
+
+        try {
+            const data = form.data;
+
+            await queueCollection(auth.user.id, client, {
+                collected_on: data.collected_on,
+                notes: data.notes,
+                signature: data.signature,
+                loan_id: data.loan_id,
+                loan_deduction: data.loan_id ? data.loan_deduction : '',
+                items: cut.map((r) => ({
+                    machine_id: r.machine.id,
+                    code: r.machine.code,
+                    credit_value: r.machine.credit_value,
+                    base_in: r.machine.counter_in,
+                    base_out: r.machine.counter_out,
+                    current_in: r.item.current_in,
+                    current_out: r.item.current_out,
+                    forced: r.losing && r.item.mode === 'force',
+                    cash_counted: r.item.cash_counted,
+                    notes: r.item.notes,
+                    photo: r.item.photo,
+                })),
+            });
+
+            toast.success(
+                'Corte guardado en el teléfono. Se enviará al recuperar la señal.',
+            );
+            onSavedOffline?.();
+        } catch {
+            toast.error('No se pudo guardar el corte en el teléfono.');
+        } finally {
+            setSavingLocally(false);
+        }
     };
 
     return (
@@ -534,12 +623,27 @@ function CollectionForm({ client, today }: { client: Client; today: string }) {
                         No hay máquinas para cortar en esta visita.
                     </p>
                 )}
+                {saveLocally && (
+                    <p className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400">
+                        <WifiOff className="size-4 shrink-0" />
+                        Sin conexión: el corte se guarda en el teléfono y se
+                        envía solo al recuperar la señal. El recibo estará
+                        disponible después de sincronizar.
+                    </p>
+                )}
                 <Button
                     size="lg"
                     className="w-full md:w-auto"
-                    disabled={form.processing || cut.length === 0 || blocked}
+                    disabled={
+                        form.processing ||
+                        savingLocally ||
+                        cut.length === 0 ||
+                        blocked
+                    }
                 >
-                    Guardar corte y generar recibo
+                    {saveLocally
+                        ? 'Guardar sin conexión'
+                        : 'Guardar corte y generar recibo'}
                 </Button>
             </div>
         </form>
@@ -897,7 +1001,7 @@ function MachineHistory({ machine }: { machine: Machine }) {
                 </DialogDescription>
                 {readings.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
-                        La máquina aún no tiene cortes.
+                        No hay lecturas anteriores disponibles.
                     </p>
                 ) : (
                     <div className="overflow-x-auto">

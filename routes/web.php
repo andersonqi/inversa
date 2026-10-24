@@ -3,6 +3,7 @@
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\CollectionRouteController;
+use App\Http\Controllers\CollectionSyncController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\LoanController;
@@ -52,6 +53,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Ubicación del negocio tomada en campo (quien edita clientes o registra cortes).
     Route::post('clients/{client}/location', [ClientController::class, 'updateLocation'])->name('clients.location')->middleware('can:clients.view');
+
+    // Modo sin conexión (antes de "collections/{collection}" para no confundirse con un id).
+    Route::middleware('can:collections.create')->controller(CollectionSyncController::class)->group(function () {
+        Route::get('offline', 'page')->name('offline');
+        Route::get('collections/offline', 'data')->name('collections.offline');
+        Route::post('collections/sync', 'store')->name('collections.sync');
+    });
 
     Route::get('collections', [CollectionController::class, 'index'])->name('collections.index')->middleware('can:collections.view');
     Route::get('collections/create', [CollectionController::class, 'create'])->name('collections.create')->middleware('can:collections.create');

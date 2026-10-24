@@ -1,0 +1,14 @@
+{
+    "name": "Inversa Guatemala",
+    "short_name": "Inversa",
+    "lang": "es",
+    "start_url": "/dashboard",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#0b332c",
+    "theme_color": "#0b332c",
+    "icons": [
+        { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+        { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+    ]
+}

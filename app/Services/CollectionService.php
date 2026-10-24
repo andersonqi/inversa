@@ -45,7 +45,7 @@ class CollectionService
     private const SIGNATURE_PREFIX = 'data:image/png;base64,';
 
     /**
-     * @param  array{collected_on: string, notes?: string|null, signature?: string|null, loan_id?: int|null, loan_deduction?: float|string|null, items: list<array{machine_id: int, current_in: int, current_out: int, forced?: bool|string|int|null, cash_counted?: float|string|null, notes?: string|null, photo?: UploadedFile|null}>}  $data
+     * @param  array{collected_on: string, offline_id?: string|null, notes?: string|null, signature?: string|null, loan_id?: int|null, loan_deduction?: float|string|null, items: list<array{machine_id: int, current_in: int, current_out: int, forced?: bool|string|int|null, cash_counted?: float|string|null, notes?: string|null, photo?: UploadedFile|null}>}  $data
      */
     public function record(User $user, Client $client, array $data): Collection
     {
@@ -148,6 +148,7 @@ class CollectionService
                 // Todo lo que sale de las máquinas menos lo que se le entrega a la pulpería.
                 'cash_delivered' => round($net - $clientPaid, 2),
                 'notes' => $data['notes'] ?? null,
+                'offline_id' => $data['offline_id'] ?? null,
             ]);
 
             foreach ($items as $item) {
@@ -253,7 +254,7 @@ class CollectionService
     {
         $directory = "collections/{$collection->id}";
 
-        DB::transaction(function () use ($collection) {
+        DB::transaction(function () use ($collection, $directory) {
             $collection->load('items.machine', 'loanPayment.loan', 'client');
 
             foreach ($collection->items as $item) {
@@ -298,10 +299,11 @@ class CollectionService
             $collection->delete();
 
             $loan?->refreshBalance();
-        });
 
-        // Fotos y firma del corte anulado.
-        Storage::disk(self::DISK)->deleteDirectory($directory);
+            // Fotos y firma del corte anulado, solo si la anulación se confirma (puede ser
+            // parte de una transacción mayor, como el reemplazo de un corte en conflicto).
+            DB::afterCommit(fn () => Storage::disk(self::DISK)->deleteDirectory($directory));
+        });
     }
 
     /**

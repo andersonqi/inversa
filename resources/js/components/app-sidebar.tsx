@@ -11,6 +11,7 @@ import {
     ShieldCheck,
     Store,
     Users,
+    WifiOff,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
@@ -25,7 +26,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { useCan } from '@/hooks/use-can';
-import { dashboard } from '@/routes';
+import { dashboard, offline } from '@/routes';
 import clients from '@/routes/clients';
 import collections from '@/routes/collections';
 import expenses from '@/routes/expenses';
@@ -85,6 +86,12 @@ const groups: { label: string; items: GuardedItem[] }[] = [
                 href: expenses.index(),
                 icon: Receipt,
                 permission: 'expenses.view',
+            },
+            {
+                title: 'Sin conexión',
+                href: offline(),
+                icon: WifiOff,
+                permission: 'collections.create',
             },
         ],
     },

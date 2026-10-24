@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\MachineStatus;
+use App\Http\Requests\StoreCollectionRequest;
 use App\Models\Client;
 use App\Models\Collection;
 use App\Models\CollectionItem;
@@ -88,28 +89,9 @@ class CollectionController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StoreCollectionRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            'client_id' => ['required', 'integer', 'exists:clients,id'],
-            'collected_on' => ['required', 'date', 'before_or_equal:today'],
-            'notes' => ['nullable', 'string', 'max:2000'],
-            // Firma del tendero: data URL PNG generada por el canvas.
-            'signature' => ['nullable', 'string', 'max:1500000'],
-            'loan_id' => ['nullable', 'integer'],
-            'loan_deduction' => ['nullable', 'numeric', 'min:0'],
-            'items' => ['required', 'array', 'min:1'],
-            'items.*.machine_id' => ['required', 'integer', 'distinct'],
-            'items.*.current_in' => ['required', 'integer', 'min:0'],
-            'items.*.current_out' => ['required', 'integer', 'min:0'],
-            'items.*.forced' => ['sometimes', 'boolean'],
-            'items.*.cash_counted' => ['nullable', 'numeric', 'min:0'],
-            'items.*.notes' => ['nullable', 'string', 'max:1000'],
-            'items.*.photo' => ['nullable', 'image', 'max:8192'],
-        ], [
-            'items.*.photo.image' => 'La foto del contador debe ser una imagen.',
-            'items.*.photo.max' => 'La foto del contador no puede pesar más de 8 MB.',
-        ]);
+        $data = $request->validated();
 
         $client = Client::query()->visibleTo($request->user())->findOrFail($request->integer('client_id'));
 
