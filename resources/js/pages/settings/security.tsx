@@ -28,8 +28,8 @@ export default function Security(props: Props) {
             <div className="space-y-6">
                 <Heading
                     variant="small"
-                    title="Actualizar contraseña"
-                    description="Asegúrese de que su cuenta use una contraseña larga y aleatoria para mantenerse segura"
+                    title="Actualizar contraseña o PIN"
+                    description="Use una contraseña de al menos 6 caracteres o un PIN de 4 dígitos. No la comparta con nadie."
                 />
 
                 <Form
@@ -58,7 +58,7 @@ export default function Security(props: Props) {
                         <>
                             <div className="grid gap-2">
                                 <Label htmlFor="current_password">
-                                    Contraseña actual
+                                    Contraseña o PIN actual
                                 </Label>
 
                                 <PasswordInput
@@ -67,7 +67,7 @@ export default function Security(props: Props) {
                                     name="current_password"
                                     className="mt-1 block w-full"
                                     autoComplete="current-password"
-                                    placeholder="Contraseña actual"
+                                    placeholder="Contraseña o PIN actual"
                                 />
 
                                 <InputError message={errors.current_password} />
@@ -75,7 +75,7 @@ export default function Security(props: Props) {
 
                             <div className="grid gap-2">
                                 <Label htmlFor="password">
-                                    Nueva contraseña
+                                    Nueva contraseña o PIN
                                 </Label>
 
                                 <PasswordInput
@@ -84,7 +84,7 @@ export default function Security(props: Props) {
                                     name="password"
                                     className="mt-1 block w-full"
                                     autoComplete="new-password"
-                                    placeholder="Nueva contraseña"
+                                    placeholder="Nueva contraseña o PIN"
                                     passwordrules={props.passwordRules}
                                 />
 

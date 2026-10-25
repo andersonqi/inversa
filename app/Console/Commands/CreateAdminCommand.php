@@ -5,10 +5,10 @@ namespace App\Console\Commands;
 use App\Enums\RoleScope;
 use App\Models\Role;
 use App\Models\User;
+use App\Rules\PasswordOrPin;
 use App\Support\Permissions;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rules\Password;
 
 use function Laravel\Prompts\password;
 use function Laravel\Prompts\text;
@@ -43,7 +43,7 @@ class CreateAdminCommand extends Command
             [
                 'name' => ['required', 'string', 'max:120'],
                 'email' => ['required', 'email', 'max:255'],
-                'password' => ['required', 'string', Password::default()],
+                'password' => ['required', 'string', new PasswordOrPin],
             ],
         );
 

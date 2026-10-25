@@ -47,7 +47,9 @@ export default function Login({ status, canResetPassword }: Props) {
 
                             <div className="grid gap-2">
                                 <div className="flex items-center">
-                                    <Label htmlFor="password">Contraseña</Label>
+                                    <Label htmlFor="password">
+                                        Contraseña o PIN
+                                    </Label>
                                     {canResetPassword && (
                                         <TextLink
                                             href={request()}
@@ -64,7 +66,7 @@ export default function Login({ status, canResetPassword }: Props) {
                                     required
                                     tabIndex={2}
                                     autoComplete="current-password"
-                                    placeholder="Contraseña"
+                                    placeholder="Contraseña o PIN"
                                 />
                                 <InputError message={errors.password} />
                             </div>

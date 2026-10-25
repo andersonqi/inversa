@@ -94,9 +94,15 @@ class FortifyServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('login', function (Request $request) {
-            $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
+            $email = Str::transliterate(Str::lower((string) $request->input(Fortify::username())));
 
-            return Limit::perMinute(5)->by($throttleKey);
+            return [
+                // 5 intentos por minuto desde el mismo dispositivo.
+                Limit::perMinute(5)->by($email.'|'.$request->ip()),
+                // Con PIN de 4 dígitos: además, máximo 20 intentos por hora a la misma
+                // cuenta desde cualquier lugar, para que no se pueda adivinar probando.
+                Limit::perHour(20)->by('account|'.$email),
+            ];
         });
 
         RateLimiter::for('passkeys', function (Request $request) {

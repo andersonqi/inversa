@@ -5,10 +5,10 @@ namespace App\Http\Controllers;
 use App\Enums\RoleScope;
 use App\Models\Role;
 use App\Models\User;
+use App\Rules\PasswordOrPin;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -126,7 +126,10 @@ class UserController extends Controller
             'role_id' => ['required', 'exists:roles,id'],
             'office_id' => ['nullable', 'exists:offices,id'],
             'is_active' => ['boolean'],
-            'password' => [$user ? 'nullable' : 'required', 'string', Password::default(), 'confirmed'],
+            // PIN de 4 dígitos o contraseña de al menos 6 caracteres, sin más requisitos.
+            'password' => [$user ? 'nullable' : 'required', 'string', new PasswordOrPin, 'confirmed'],
+        ], [
+            'password.confirmed' => 'La confirmación no coincide con la contraseña o PIN.',
         ]);
 
         $role = Role::findOrFail($request->integer('role_id'));
