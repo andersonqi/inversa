@@ -6,6 +6,7 @@ import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { applyBrandColor } from '@/lib/brand-theme';
+import { initInstallPrompt } from '@/lib/install-app';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -40,6 +41,9 @@ void createInertiaApp({
 
 // This will set light / dark mode on load...
 initializeTheme();
+
+// Botón "Instalar app": se escucha desde el inicio el aviso de instalación del navegador.
+initInstallPrompt();
 
 // Color de la marca: lo define la empresa o el usuario y puede cambiar al navegar.
 router.on('navigate', (event) => {

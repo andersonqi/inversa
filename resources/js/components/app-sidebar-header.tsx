@@ -1,5 +1,6 @@
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { CurrencySwitcher } from '@/components/currency-switcher';
+import { InstallAppButton } from '@/components/install-app-button';
 import { NotificationsBell } from '@/components/notifications-bell';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import type { BreadcrumbItem as BreadcrumbItemType } from '@/types';
@@ -18,6 +19,7 @@ export function AppSidebarHeader({
                 </div>
             </div>
             <div className="ml-auto flex items-center gap-2">
+                <InstallAppButton />
                 <CurrencySwitcher />
                 <NotificationsBell />
             </div>
