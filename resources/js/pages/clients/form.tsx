@@ -1,6 +1,7 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { CheckboxField } from '@/components/app/checkbox-field';
 import { Field, FormGrid } from '@/components/app/field';
+import { LocationFields } from '@/components/app/location';
 import { Page, PageHeader, Panel } from '@/components/app/page';
 import { PhotoField } from '@/components/app/photo-field';
 import { Button } from '@/components/ui/button';
@@ -83,18 +84,6 @@ export default function ClientForm({
                                     />
                                 </Field>
                                 <Field
-                                    label="Dirección"
-                                    htmlFor="address"
-                                    error={errors.address}
-                                    className="sm:col-span-2"
-                                >
-                                    <Input
-                                        id="address"
-                                        name="address"
-                                        defaultValue={client?.address ?? ''}
-                                    />
-                                </Field>
-                                <Field
                                     label="Ruta"
                                     htmlFor="collection_route_id"
                                     error={errors.collection_route_id}
@@ -152,37 +141,6 @@ export default function ClientForm({
                                             </option>
                                         ))}
                                     </NativeSelect>
-                                </Field>
-                                <Field
-                                    label="Latitud"
-                                    htmlFor="latitude"
-                                    error={errors.latitude}
-                                    hint="Opcional. También se puede tomar en campo desde la tarjeta del cliente."
-                                >
-                                    <Input
-                                        id="latitude"
-                                        name="latitude"
-                                        type="number"
-                                        step="0.0000001"
-                                        min={-90}
-                                        max={90}
-                                        defaultValue={client?.latitude ?? ''}
-                                    />
-                                </Field>
-                                <Field
-                                    label="Longitud"
-                                    htmlFor="longitude"
-                                    error={errors.longitude}
-                                >
-                                    <Input
-                                        id="longitude"
-                                        name="longitude"
-                                        type="number"
-                                        step="0.0000001"
-                                        min={-180}
-                                        max={180}
-                                        defaultValue={client?.longitude ?? ''}
-                                    />
                                 </Field>
                                 <Field
                                     label="Comisión del cliente (%)"
@@ -250,6 +208,10 @@ export default function ClientForm({
                                     }
                                 />
                             </FormGrid>
+                            <LocationFields
+                                initial={client ?? {}}
+                                errors={errors}
+                            />
                             <CheckboxField
                                 name="is_active"
                                 label="Cliente activo"

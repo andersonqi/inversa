@@ -8,6 +8,7 @@ use App\Http\Controllers\CollectionSyncController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExchangeRateController;
 use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\GeocodingController;
 use App\Http\Controllers\LoanController;
 use App\Http\Controllers\LoanPaymentController;
 use App\Http\Controllers\MachineController;
@@ -102,6 +103,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Ubicación del negocio tomada en campo (quien edita clientes o registra cortes).
     Route::post('clients/{client}/location', [ClientController::class, 'updateLocation'])->name('clients.location')->middleware('can:clients.view');
+
+    // Dirección a partir de la coordenada GPS del teléfono.
+    Route::get('geocoding/reverse', [GeocodingController::class, 'reverse'])->name('geocoding.reverse')->middleware('throttle:30,1');
 
     // Fotos privadas del cliente, del negocio y de la máquina.
     Route::get('clients/{client}/photos/{kind}', [ClientController::class, 'photo'])->name('clients.photo')->whereIn('kind', ['client', 'business'])->middleware('can:clients.view');

@@ -35,6 +35,13 @@ return [
         'max_age_minutes' => (int) env('EXCHANGE_RATE_MAX_AGE_MINUTES', 60),
     ],
 
+    // Dirección a partir de la coordenada GPS (Nominatim de OpenStreetMap, sin clave).
+    'geocoding' => [
+        'url' => env('GEOCODING_URL', 'https://nominatim.openstreetmap.org'),
+        // Correo de contacto que Nominatim pide para identificar la aplicación.
+        'email' => env('GEOCODING_EMAIL'),
+    ],
+
     // App de Android (APK / Play Store) que abre el sistema a pantalla completa (TWA).
     // Se publica en /.well-known/assetlinks.json para que Android confíe en el dominio.
     'android' => [

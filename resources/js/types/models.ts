@@ -67,6 +67,10 @@ export type Client = {
     document: string | null;
     phone: string | null;
     address: string | null;
+    /** Ciudad o municipio. */
+    city: string | null;
+    /** Distrito, zona, colonia o aldea. */
+    district: string | null;
     latitude: string | null;
     longitude: string | null;
     commission_percent: string;

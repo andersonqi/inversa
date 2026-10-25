@@ -23,6 +23,8 @@ use Illuminate\Support\Carbon;
  * @property string|null $document
  * @property string|null $phone
  * @property string|null $address
+ * @property string|null $city Ciudad o municipio.
+ * @property string|null $district Distrito, zona, colonia o aldea.
  * @property string|null $latitude
  * @property string|null $longitude
  * @property string $commission_percent
@@ -36,7 +38,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['collection_route_id', 'name', 'business_name', 'document', 'phone', 'address', 'latitude', 'longitude', 'commission_percent', 'loss_balance', 'visit_order', 'visit_day', 'notes', 'is_active'])]
+#[Fillable(['collection_route_id', 'name', 'business_name', 'document', 'phone', 'address', 'city', 'district', 'latitude', 'longitude', 'commission_percent', 'loss_balance', 'visit_order', 'visit_day', 'notes', 'is_active'])]
 class Client extends Model implements VisibleToUser
 {
     use ChecksVisibility;

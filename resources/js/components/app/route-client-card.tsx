@@ -5,13 +5,13 @@ import {
     HandCoins,
     LocateFixed,
     MapPin,
-    Navigation,
     Receipt,
 } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
 import { useState } from 'react';
 import type { Tone } from '@/components/app/badges';
 import { Pill } from '@/components/app/badges';
+import { LocationLinks, LocationMap } from '@/components/app/location';
 import { MachineMoveActions } from '@/components/app/machine-move-actions';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,8 +23,9 @@ import {
 } from '@/components/ui/dialog';
 import { useCan } from '@/hooks/use-can';
 import { money, num } from '@/lib/format';
+import { getPrecisePosition, reverseGeocode } from '@/lib/geolocation';
 import { photoUrl } from '@/lib/image';
-import { dayLabel, googleMapsUrl, wazeUrl } from '@/lib/route-tools';
+import { dayLabel, hasCoordinates, placeText } from '@/lib/route-tools';
 import { cn } from '@/lib/utils';
 import clients from '@/routes/clients';
 import collections from '@/routes/collections';
@@ -84,6 +85,7 @@ export function RouteClientCard({
     const installed = client.installed_machines_count ?? 0;
     const collected = client.collected_machines_count ?? 0;
     const debt = Number(client.loans_balance ?? 0);
+    const place = placeText(client);
 
     return (
         <article
@@ -117,9 +119,9 @@ export function RouteClientCard({
                     · {dayLabel(client.visit_day)}
                     {!client.is_active && ' · Inactivo'}
                 </p>
-                {client.address && (
+                {place && (
                     <p className="truncate text-xs text-muted-foreground">
-                        {client.address}
+                        {place}
                     </p>
                 )}
                 {debt > 0 && (
@@ -319,46 +321,49 @@ function LocationAction({ client }: { client: Client }) {
     const can = useCan();
     const [locating, setLocating] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const google = googleMapsUrl(client);
-    const waze = wazeUrl(client);
     const canUpdate = can('clients.manage') || can('collections.create');
+    const located = hasCoordinates(client);
+    const place = placeText(client);
     const businessPhoto = photoUrl(
         clients.photo({ client: client.id, kind: 'business' }).url,
         client.business_photo_path,
     );
 
-    const saveCurrent = () => {
-        if (!('geolocation' in navigator)) {
-            setError('Este dispositivo no permite obtener la ubicación.');
-
-            return;
-        }
-
+    // Coordenada exacta del GPS; la dirección encontrada solo completa datos vacíos.
+    const saveCurrent = async () => {
         setLocating(true);
         setError(null);
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                router.post(
-                    clients.location(client.id).url,
-                    {
-                        latitude: position.coords.latitude.toFixed(7),
-                        longitude: position.coords.longitude.toFixed(7),
-                    },
-                    {
-                        preserveScroll: true,
-                        preserveState: true,
-                        onFinish: () => setLocating(false),
-                    },
-                );
-            },
-            () => {
-                setLocating(false);
-                setError(
-                    'No se pudo obtener la ubicación. Revise que el GPS y el permiso estén activos.',
-                );
-            },
-            { enableHighAccuracy: true, timeout: 15000 },
-        );
+
+        try {
+            const reading = await getPrecisePosition();
+            const details = await reverseGeocode(
+                reading.latitude,
+                reading.longitude,
+            );
+
+            router.post(
+                clients.location(client.id).url,
+                {
+                    latitude: reading.latitude.toFixed(7),
+                    longitude: reading.longitude.toFixed(7),
+                    address: details?.address ?? null,
+                    city: details?.city ?? null,
+                    district: details?.district ?? null,
+                },
+                {
+                    preserveScroll: true,
+                    preserveState: true,
+                    onFinish: () => setLocating(false),
+                },
+            );
+        } catch (e) {
+            setLocating(false);
+            setError(
+                e instanceof Error
+                    ? e.message
+                    : 'No se pudo obtener la ubicación.',
+            );
+        }
     };
 
     return (
@@ -366,14 +371,10 @@ function LocationAction({ client }: { client: Client }) {
             <DialogTrigger asChild>
                 <ActionButton icon={<MapPin />} label="Ubicación" />
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-h-[90dvh] overflow-y-auto">
                 <DialogTitle>Ubicación de {client.name}</DialogTitle>
                 <DialogDescription>
-                    {client.latitude && client.longitude
-                        ? `Coordenada: ${client.latitude}, ${client.longitude}`
-                        : client.address
-                          ? `Sin coordenada guardada. Dirección: ${client.address}`
-                          : 'Sin coordenada ni dirección guardada.'}
+                    {place || 'Sin dirección guardada.'}
                 </DialogDescription>
                 {businessPhoto && (
                     <img
@@ -383,24 +384,23 @@ function LocationAction({ client }: { client: Client }) {
                         className="max-h-64 w-full rounded-lg border object-cover"
                     />
                 )}
-                <div className="grid gap-2 sm:grid-cols-2">
-                    {google && (
-                        <Button variant="outline" asChild>
-                            <a href={google} target="_blank" rel="noreferrer">
-                                <MapPin /> Google Maps
-                            </a>
-                        </Button>
-                    )}
-                    {waze && (
-                        <Button variant="outline" asChild>
-                            <a href={waze} target="_blank" rel="noreferrer">
-                                <Navigation /> Waze
-                            </a>
-                        </Button>
-                    )}
-                </div>
+                {located ? (
+                    <LocationMap
+                        latitude={client.latitude ?? ''}
+                        longitude={client.longitude ?? ''}
+                        className="h-48"
+                    />
+                ) : (
+                    <p className="text-sm text-muted-foreground">
+                        Sin coordenada GPS guardada.
+                    </p>
+                )}
+                <LocationLinks place={client} />
                 {canUpdate && (
-                    <Button onClick={saveCurrent} disabled={locating}>
+                    <Button
+                        onClick={() => void saveCurrent()}
+                        disabled={locating}
+                    >
                         <LocateFixed />
                         {locating
                             ? 'Obteniendo ubicación…'

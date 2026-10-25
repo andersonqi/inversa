@@ -58,7 +58,7 @@ class ClientController extends Controller
             ])
             ->withMax(['collections as week_collection_id' => fn ($q) => $q->whereBetween('collected_on', $week)], 'id')
             ->withSum('activeLoans as loans_balance', 'balance')
-            ->when($request->string('search')->value(), fn ($q, $search) => $q->whereAny(['name', 'business_name', 'document', 'phone'], 'ilike', "%{$search}%"))
+            ->when($request->string('search')->value(), fn ($q, $search) => $q->whereAny(['name', 'business_name', 'document', 'phone', 'city', 'district'], 'ilike', "%{$search}%"))
             ->when($request->integer('route_id'), fn ($q, $routeId) => $q->where('collection_route_id', $routeId))
             ->when($request->integer('day'), fn ($q, $day) => $q->where('visit_day', $day))
             ->orderBy('collection_route_id')
@@ -78,17 +78,35 @@ class ClientController extends Controller
     }
 
     /**
-     * Guarda la coordenada actual del negocio tomada desde el teléfono del cobrador.
+     * Guarda la coordenada actual del negocio tomada desde el teléfono del cobrador. La
+     * dirección, ciudad y distrito obtenidos de la coordenada solo completan los datos
+     * que estaban vacíos (no reemplazan lo que escribió la oficina).
      */
     public function updateLocation(Request $request, Client $client): RedirectResponse
     {
         $this->ensureVisible($request, $client);
         abort_unless($request->user()->canAny(['clients.manage', 'collections.create']), 403);
 
-        $client->update($request->validate([
+        $data = $request->validate([
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
-        ]));
+            'address' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:120'],
+            'district' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $changes = ['latitude' => $data['latitude'], 'longitude' => $data['longitude']];
+
+        foreach (['address', 'city', 'district'] as $field) {
+            $value = trim((string) ($data[$field] ?? ''));
+            $current = $client->getAttribute($field);
+
+            if ($value !== '' && (! is_string($current) || trim($current) === '')) {
+                $changes[$field] = $value;
+            }
+        }
+
+        $client->update($changes);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Ubicación del negocio actualizada.']);
 
@@ -201,6 +219,8 @@ class ClientController extends Controller
             'document' => ['nullable', 'string', 'max:40'],
             'phone' => ['nullable', 'string', 'max:40'],
             'address' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:120'],
+            'district' => ['nullable', 'string', 'max:120'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_with:longitude'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
             'commission_percent' => ['required', 'numeric', 'min:0', 'max:100'],
@@ -215,6 +235,8 @@ class ClientController extends Controller
         ], PhotoStorage::messages(array_values(self::PHOTO_FIELDS)), [
             'photo' => 'foto del cliente',
             'business_photo' => 'foto del negocio',
+            'city' => 'ciudad',
+            'district' => 'distrito',
         ]);
 
         $this->ensureRouteAllowed($request->user(), $data['collection_route_id']);

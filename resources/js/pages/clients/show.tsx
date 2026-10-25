@@ -7,6 +7,7 @@ import {
 } from '@/components/app/badges';
 import { ConfirmAction } from '@/components/app/confirm-action';
 import { EmptyRow } from '@/components/app/empty-row';
+import { LocationLinks, LocationMap } from '@/components/app/location';
 import { MachineMoveActions } from '@/components/app/machine-move-actions';
 import { Page, PageHeader, Panel } from '@/components/app/page';
 import { Pagination } from '@/components/app/pagination';
@@ -23,7 +24,7 @@ import {
 import { useCan } from '@/hooks/use-can';
 import { date, money, num, percent, signClass } from '@/lib/format';
 import { photoUrl } from '@/lib/image';
-import { dayLabel } from '@/lib/route-tools';
+import { dayLabel, hasCoordinates, placeText } from '@/lib/route-tools';
 import clients from '@/routes/clients';
 import collections from '@/routes/collections';
 import loans from '@/routes/loans';
@@ -42,6 +43,7 @@ export default function ClientShow({
     const can = useCan();
     const canMove = can('machines.move');
     const route = client.collection_route;
+    const located = hasCoordinates(client);
     const photos = [
         {
             label: 'Foto del negocio',
@@ -164,14 +166,46 @@ export default function ClientShow({
                         )
                     }
                 />
-                {client.address && (
-                    <Info
-                        label="Dirección"
-                        value={client.address}
-                        className="sm:col-span-2 md:col-span-6"
-                    />
-                )}
             </div>
+
+            {(located || placeText(client)) && (
+                <Panel title="Ubicación">
+                    <div className="grid gap-4 p-4 md:grid-cols-2">
+                        {located && (
+                            <LocationMap
+                                latitude={client.latitude ?? ''}
+                                longitude={client.longitude ?? ''}
+                                className="h-64"
+                            />
+                        )}
+                        <div className="space-y-4">
+                            <dl className="grid gap-3 text-sm">
+                                <PlaceRow
+                                    label="Dirección"
+                                    value={client.address}
+                                />
+                                <PlaceRow
+                                    label="Distrito / zona"
+                                    value={client.district}
+                                />
+                                <PlaceRow
+                                    label="Ciudad / municipio"
+                                    value={client.city}
+                                />
+                                <PlaceRow
+                                    label="Coordenada GPS"
+                                    value={
+                                        located
+                                            ? `${client.latitude}, ${client.longitude}`
+                                            : null
+                                    }
+                                />
+                            </dl>
+                            <LocationLinks place={client} />
+                        </div>
+                    </div>
+                </Panel>
+            )}
 
             <div className="grid gap-6 xl:grid-cols-2">
                 <Panel title="Máquinas instaladas">
@@ -338,6 +372,15 @@ export default function ClientShow({
                 <Pagination page={recentPage} />
             </Panel>
         </Page>
+    );
+}
+
+function PlaceRow({ label, value }: { label: string; value: string | null }) {
+    return (
+        <div>
+            <dt className="text-xs text-muted-foreground">{label}</dt>
+            <dd className="font-medium">{value || '—'}</dd>
+        </div>
     );
 }
 
